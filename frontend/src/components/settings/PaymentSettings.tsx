@@ -1,0 +1,568 @@
+/**
+ * Payment Settings - Complete Payment Method Configuration
+ * 
+ * Supports:
+ * 1. Mobile Money (MTN/Airtel) - For instant payouts
+ * 2. Cash Payments - For on-site collection by staff
+ * 
+ * Users can enable one or both payment methods for their business.
+ */
+
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, AlertCircle, CheckCircle, DollarSign, Smartphone } from 'lucide-react';
+import { Button, Card } from '@/components/common';
+import PaymentAccountCard from '@/components/dashboard/PaymentAccountCard';
+import { validateAndNormalizePhone } from '@/utils/phoneValidation';
+import { useToast } from '@/components/common';
+import { useAuth } from '@/context/AuthContext';
+
+interface PaymentAccount {
+  id: string;
+  network: string;
+  momo_number: string;
+  account_name?: string;
+  is_verified: boolean;
+  is_default: boolean;
+  created_at?: string;
+}
+
+type PaymentMethodType = 'mobile-money' | 'cash' | null;
+
+export const PaymentSettings: React.FC = () => {
+  const { success, error } = useToast();
+  const { user } = useAuth();
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<PaymentAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cashEnabled, setCashEnabled] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const hasInitialized = useRef(false);
+  
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+  
+  const [formData, setFormData] = useState({
+    momo_number: '',
+    account_name: '',
+  });
+  
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Load accounts for a tenant
+  const loadAccounts = async (tid: string) => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch(`${apiUrl}/tenants/${tid}/payment-accounts`, {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      });
+      
+      if (!res.ok) {
+        console.warn('Failed to load accounts:', res.status, res.statusText);
+        // Graceful degradation - show empty list instead of error
+        setAccounts([]);
+        setLoadError(null);
+        return;
+      }
+      
+      const text = await res.text();
+      try {
+        const data = JSON.parse(text);
+        setAccounts(data.data || []);
+        setLoadError(null);
+      } catch (parseErr) {
+        console.error('Failed to parse response as JSON:', text.substring(0, 100));
+        setAccounts([]);
+        setLoadError(null);
+      }
+    } catch (err) {
+      console.error('Error loading accounts:', err);
+      setAccounts([]);
+      setLoadError(null); // Don't show error to user for init load
+    }
+  };
+
+  // Load tenant info and accounts on mount only
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const initializeComponent = async () => {
+      try {
+        setLoading(true);
+        setLoadError(null);
+        
+        // Get tenant ID from authenticated user
+        if (!user || !user.tenant_id) {
+          console.warn('No authenticated user or tenant ID available');
+          setLoading(false);
+          return;
+        }
+        
+        setTenantId(user.tenant_id);
+        await loadAccounts(user.tenant_id);
+      } catch (err) {
+        console.error('Error initializing:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeComponent();
+  }, [user]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+    setFormError(null);
+  };
+
+  const handleAddMobileMoneyAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!tenantId) {
+      setFormError('Unable to load your tenant information. Please refresh the page and log in again.');
+      return;
+    }
+
+    setFormError(null);
+
+    // Validate phone number
+    const validation = validateAndNormalizePhone(formData.momo_number);
+    if (!validation.isValid) {
+      setFormError(validation.error || 'Invalid phone number');
+      return;
+    }
+
+    if (!formData.momo_number.trim()) {
+      setFormError('Phone number is required');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch(`${apiUrl}/tenants/${tenantId}/payment-accounts`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          momo_number: validation.normalized,
+          account_name: formData.account_name || undefined,
+        }),
+      });
+
+      const responseText = await res.text();
+      
+      // Log response details for debugging
+      console.log('Response Status:', res.status);
+      console.log('Response Headers Content-Type:', res.headers.get('content-type'));
+      console.log('Response Text (first 300 chars):', responseText.substring(0, 300));
+      
+      let data;
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch (parseErr) {
+        console.error('Failed to parse API response:', responseText.substring(0, 200));
+        setFormError(`Server error: ${res.status} ${res.statusText}. Response: ${responseText.substring(0, 100)}`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!res.ok) {
+        setFormError(data.message || `Error: ${res.status} ${res.statusText}`);
+        console.error('API Error:', data);
+        setIsSubmitting(false);
+        return;
+      }
+
+      success('Payment account added. Awaiting admin verification.');
+      setFormData({ momo_number: '', account_name: '' });
+      setShowAddForm(false);
+      setSelectedMethod(null);
+      
+      // Reload accounts
+      await loadAccounts(tenantId);
+    } catch (err: any) {
+      setFormError(err.message || 'Failed to add payment account');
+      console.error('Error adding account:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEnableCash = () => {
+    setCashEnabled(!cashEnabled);
+    if (!cashEnabled) {
+      success('Cash payment enabled. Staff can collect payments on-site.');
+    } else {
+      success('Cash payment disabled.');
+    }
+  };
+
+  const handleDelete = async (accountId: string) => {
+    if (!tenantId) return;
+    
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch(
+        `${apiUrl}/tenants/${tenantId}/payment-accounts/${accountId}`,
+        {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        }
+      );
+
+      if (res.ok) {
+        success('Payment account deleted');
+        setAccounts(accounts.filter(a => a.id !== accountId));
+      } else {
+        error('Failed to delete payment account');
+      }
+    } catch (err) {
+      console.error('Error deleting account:', err);
+      error('Failed to delete payment account');
+    }
+  };
+
+  const handleSetDefault = async (accountId: string) => {
+    if (!tenantId) return;
+    
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch(
+        `${apiUrl}/tenants/${tenantId}/payment-accounts/${accountId}/default`,
+        {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        }
+      );
+
+      if (res.ok) {
+        success('Default payment account updated');
+        setAccounts(
+          accounts.map(a => ({
+            ...a,
+            is_default: a.id === accountId,
+          }))
+        );
+      } else {
+        error('Failed to update default account');
+      }
+    } catch (err) {
+      console.error('Error setting default:', err);
+      error('Failed to update default account');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-pageTitle font-bold text-neutral-900 dark:text-dark-text">
+            💳 Payment Settings
+          </h1>
+        </div>
+        <Card>
+          <div className="py-12 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto"></div>
+            <p className="text-neutral-600 dark:text-neutral-400 mt-4">Loading payment settings...</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-pageTitle font-bold text-neutral-900 dark:text-dark-text">
+          💳 Payment Settings
+        </h1>
+        <p className="text-body text-neutral-600 dark:text-neutral-400 mt-2">
+          Configure how your customers can pay. Enable Mobile Money for instant payouts or Cash for on-site collection.
+        </p>
+      </div>
+
+      {/* Payment Method Selection */}
+      <Card>
+        <div className="space-y-4">
+          <h2 className="text-sectionTitle font-semibold text-neutral-900 dark:text-dark-text">
+            Payment Methods
+          </h2>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            Choose one or both payment methods for your business.
+          </p>
+
+          {/* Payment Method Options */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Mobile Money Option */}
+            <div 
+              onClick={() => setSelectedMethod(selectedMethod === 'mobile-money' ? null : 'mobile-money')}
+              className={`p-4 rounded-lg border-2 cursor-pointer transition ${
+                selectedMethod === 'mobile-money'
+                  ? 'border-orange-500 bg-orange-50 dark:bg-orange-950'
+                  : 'border-neutral-300 dark:border-neutral-600 hover:border-orange-300'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <Smartphone className="w-6 h-6 text-orange-600 mt-1" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-neutral-900 dark:text-dark-text">
+                    📱 Mobile Money
+                  </h3>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                    MTN or Airtel. Funds go directly to your account instantly.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    <span className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded">
+                      Instant Payout
+                    </span>
+                    <span className="inline-block px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded">
+                      Secure
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Cash Option */}
+            <div 
+              onClick={() => {
+                if (!cashEnabled) {
+                  setSelectedMethod(null);
+                  handleEnableCash();
+                } else {
+                  handleEnableCash();
+                }
+              }}
+              className={`p-4 rounded-lg border-2 cursor-pointer transition ${
+                cashEnabled
+                  ? 'border-green-500 bg-green-50 dark:bg-green-950'
+                  : 'border-neutral-300 dark:border-neutral-600 hover:border-green-300'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-6 h-6 text-green-600" />
+                    <h3 className="font-semibold text-neutral-900 dark:text-dark-text">
+                      💵 Cash Payment
+                    </h3>
+                  </div>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                    Customers pay on-site. Staff confirms in Orders panel.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    <span className="inline-block px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs rounded">
+                      On-Site
+                    </span>
+                    <span className="inline-block px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-xs rounded">
+                      Manual Confirm
+                    </span>
+                  </div>
+                </div>
+                <div className="ml-2">
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                    cashEnabled 
+                      ? 'border-green-500 bg-green-500' 
+                      : 'border-neutral-300 dark:border-neutral-600'
+                  }`}>
+                    {cashEnabled && <CheckCircle className="w-5 h-5 text-white" />}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Mobile Money Accounts Section */}
+      {selectedMethod === 'mobile-money' && (
+        <Card>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sectionTitle font-semibold text-neutral-900 dark:text-dark-text">
+                📱 Mobile Money Accounts
+              </h2>
+              <Button
+                onClick={() => setShowAddForm(!showAddForm)}
+                variant={showAddForm ? 'secondary' : 'primary'}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                {showAddForm ? 'Cancel' : 'Add Account'}
+              </Button>
+            </div>
+
+            {/* Add Account Form */}
+            {showAddForm && (
+              <form onSubmit={handleAddMobileMoneyAccount} className="p-4 border-2 border-dashed border-blue-300 rounded-lg space-y-3 mb-4 bg-blue-50 dark:bg-blue-950 dark:border-blue-700">
+              <div>
+                <label className="block text-sm font-medium text-neutral-900 dark:text-dark-text mb-1">
+                  Mobile Money Number *
+                </label>
+                <input
+                  type="tel"
+                  name="momo_number"
+                  value={formData.momo_number}
+                  onChange={handleInputChange}
+                  placeholder="0788123456"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 placeholder-neutral-500 dark:placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  Format: 0788123456 or +250788123456
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-900 dark:text-dark-text mb-1">
+                  Account Holder Name (optional)
+                </label>
+                <input
+                  type="text"
+                  name="account_name"
+                  value={formData.account_name}
+                  onChange={handleInputChange}
+                  placeholder="e.g., John Doe"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 placeholder-neutral-500 dark:placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+
+              {formError && (
+                <div className="p-2 bg-red-100 dark:bg-red-950 border border-red-300 dark:border-red-700 rounded text-sm text-red-800 dark:text-red-200 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  {formError}
+                </div>
+              )}
+
+              <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-300 dark:border-yellow-700 rounded p-3">
+                <p className="text-xs text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  Accounts must be verified by an admin before accepting payouts.
+                </p>
+              </div>
+
+              <Button
+                type="submit"
+                variant="primary"
+                isLoading={isSubmitting}
+                className="w-full"
+              >
+                {isSubmitting ? 'Adding...' : 'Add Payment Account'}
+              </Button>
+            </form>
+          )}
+          </div>
+        </Card>
+      )}
+
+      {/* Cash Payment Enabled Info */}
+      {cashEnabled && (
+        <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+          <div className="flex gap-3">
+            <div className="text-xl">✅</div>
+            <div>
+              <p className="text-sm font-semibold text-green-900 dark:text-green-100">
+                💵 Cash Payment Enabled
+              </p>
+              <p className="text-sm text-green-800 dark:text-green-200 mt-2">
+                Customers can pay with cash when placing their order. Staff will confirm payment in the Orders dashboard.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* How Payments Work */}
+      <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+        <div className="flex gap-3">
+          <div className="text-xl">ℹ️</div>
+          <div>
+            <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+              How Payments Work
+            </p>
+            <div className="text-sm text-blue-800 dark:text-blue-200 mt-2 space-y-2">
+              {accounts.length > 0 && (
+                <div>
+                  <p className="font-medium">📱 Mobile Money:</p>
+                  <ol className="list-decimal list-inside text-xs ml-2 space-y-1">
+                    <li>Customer selects Mobile Money at checkout</li>
+                    <li>Customer enters their phone number</li>
+                    <li>Payment processed securely via Paypack</li>
+                    <li>Funds go directly to your verified account</li>
+                  </ol>
+                </div>
+              )}
+              {cashEnabled && (
+                <div>
+                  <p className="font-medium">💵 Cash:</p>
+                  <ol className="list-decimal list-inside text-xs ml-2 space-y-1">
+                    <li>Customer selects Cash at checkout</li>
+                    <li>Order created with "Pending Payment"</li>
+                    <li>Staff confirms payment when received</li>
+                    <li>Order marked as "Paid" by staff</li>
+                  </ol>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Verification Status Info */}
+      {accounts.some(a => !a.is_verified) && (
+        <Card className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+          <div className="flex gap-3">
+            <div className="text-xl">⏳</div>
+            <div>
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                Verification In Progress
+              </p>
+              <p className="text-sm text-amber-800 dark:text-amber-200 mt-2">
+                Some of your Mobile Money accounts are awaiting admin verification. Once verified, they'll be available for receiving instant payouts.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {accounts.some(a => a.is_verified) && (
+        <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+          <div className="flex gap-3">
+            <div className="text-xl">🎉</div>
+            <div>
+              <p className="text-sm font-semibold text-green-900 dark:text-green-100">
+                Ready to Receive Payments
+              </p>
+              <p className="text-sm text-green-800 dark:text-green-200 mt-2">
+                Your verified Mobile Money account{accounts.filter(a => a.is_verified).length > 1 ? 's are' : ' is'} ready to receive instant payouts when customers pay for orders.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default PaymentSettings;

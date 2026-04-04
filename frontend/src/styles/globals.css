@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Variables for theme */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 3.6%;
+  --card-background: 0 0% 100%;
+  --card-border: 0 0% 89.8%;
+  --input-background: 0 0% 100%;
+  --input-border: 0 0% 89.8%;
+  --primary: 34.6 97.2% 50.4%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 210 8.3% 14%;
+  --accent: 34.6 97.2% 50.4%;
+  --muted: 210 10% 96%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: 0 0% 3.6%;
+    --foreground: 0 0% 98%;
+    --card-background: 0 0% 10%;
+    --card-border: 0 0% 14.9%;
+    --input-background: 0 0% 14%;
+    --input-border: 0 0% 23.3%;
+    --primary: 34.6 97.2% 50.4%;
+    --primary-foreground: 0 0% 3.6%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --accent: 34.6 97.2% 50.4%;
+    --muted: 217.2 16.3% 43.9%;
+    --muted-foreground: 215 13.8% 34.3%;
+    --destructive: 0 78.6% 63.3%;
+    --destructive-foreground: 210 40% 98%;
+  }
+}
+
+html {
+  @apply scroll-smooth;
+}
+
+body {
+  @apply bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100;
+  font-family: Inter, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+main {
+  @apply scroll-smooth;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-gray-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-400 dark:bg-gray-600 rounded-lg;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500 dark:bg-gray-500;
+}
+
+/* Smooth color transitions */
+* {
+  @apply transition-colors duration-200;
+}
+
+button,
+a {
+  @apply transition-opacity duration-150;
+}
+
+/* Dark mode specific styles */
+@media (prefers-color-scheme: dark) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  textarea,
+  select {
+    @apply bg-gray-900 border-gray-700 text-white placeholder-gray-400;
+  }
+
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  input[type="password"]:focus,
+  input[type="number"]:focus,
+  textarea:focus,
+  select:focus {
+    @apply bg-gray-800 border-orange-500 ring-2 ring-orange-500 ring-opacity-50;
+  }
+}
+
+/* Light mode specific styles */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  @apply bg-white border-gray-300 text-gray-900 placeholder-gray-400;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+textarea:focus,
+select:focus {
+  @apply border-orange-500 ring-2 ring-orange-500 ring-opacity-20;
+}
