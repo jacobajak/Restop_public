@@ -22,7 +22,7 @@ export type PayoutStatus = keyof typeof PayoutStatusEnum;
 /**
  * Payout - Tracks tenant cashout attempts
  * 
- * Records each instant cashout (Paypack CASHOUT transaction) to a tenant's mobile money account.
+ * Records each cashout (Flutterwave bank payout transaction) to a tenant's mobile money account.
  * Triggered immediately after successful cashin confirmation via webhook.
  */
 @Entity('payouts')
@@ -47,10 +47,10 @@ export class Payout {
   @Column({ type: 'enum', enum: PayoutStatusEnum, default: PayoutStatusEnum.PENDING })
   status: PayoutStatus;
 
-  @Column({ nullable: true, comment: 'Paypack cashout reference ID' })
+  @Column({ nullable: true, comment: 'Flutterwave payout reference ID' })
   provider_ref: string;
 
-  @Column({ type: 'jsonb', nullable: true, comment: 'Raw Paypack cashout response' })
+  @Column({ type: 'jsonb', nullable: true, comment: 'Raw Flutterwave payout response' })
   raw_payload: Record<string, any>;
 
   @CreateDateColumn()

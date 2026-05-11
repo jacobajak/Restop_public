@@ -15,7 +15,7 @@ import { AuditActionEnum } from '../../audit/entities/audit-log.entity';
  *
  * Process:
  * 1. Find all payments with status INITIATED or PENDING
- * 2. Query Paypack/Flutterwave API for current status
+ * 2. Query Flutterwave API for current status
  * 3. If status changed, update local record
  * 4. If payment confirmed, mark order as PAID
  * 5. Emit settlement.initiated event for settlement processor
@@ -95,8 +95,7 @@ export class PaymentVerificationJob {
           }
 
           // Query provider API for current status
-          // Note: This depends on which provider was used
-          // For Paypack: use payment.provider_ref to query status
+          // For Flutterwave: use payment.provider_ref to query status
           // For now, we skip actual provider calls if provider_ref is missing
           
           if (!payment.provider_ref) {

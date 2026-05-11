@@ -20,10 +20,10 @@ export type MobileNetwork = keyof typeof MobileNetworkEnum;
 /**
  * TenantPaymentAccount
  * 
- * Stores tenant's mobile money accounts for instant payout.
+ * Stores tenant's mobile money accounts for instant payout via Flutterwave.
  * Each network (MTN/AIRTEL) is a separate record.
  * 
- * When Paypack cashout is triggered, this entity provides the destination momo_number.
+ * When Flutterwave cashout is triggered, this entity provides the destination momo_number.
  */
 @Entity('tenant_payment_accounts')
 @Index(['tenant_id', 'network'], { unique: true })

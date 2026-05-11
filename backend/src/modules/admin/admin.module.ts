@@ -7,16 +7,20 @@ import { Order } from '../orders/entities/order.entity';
 import { Tenant } from '../tenants/entities/tenant.entity';
 import { PaymentTransaction } from '../payments/entities/payment.entity';
 import { Refund } from '../payments/entities/refund.entity';
+import { FraudReview } from '../payments/entities/fraud-review.entity';
+import { AuditLog } from '../audit/entities/audit-log.entity';
 import { SupportIssueService } from './services/support-issue.service';
 import { PlatformSettingsService } from './services/platform-settings.service';
+import { AdminPaymentManagementService } from './services/admin-payment-management.service';
 import { AdminAuditLogsController } from './controllers/admin-audit-logs.controller';
 import { AdminSupportController } from './controllers/admin-support.controller';
 import { AdminVerificationController } from './controllers/admin-verification.controller';
 import { AdminOverviewController } from './controllers/admin-overview.controller';
 import { AdminOrdersController } from './controllers/admin-orders.controller';
 import { AdminHealthController } from './controllers/admin-health.controller';
-// TODO: AdminFraudController - Disabled for MVP, enable in advanced phase
-// TODO: import { AdminPaymentsController } from './controllers/admin-payments.controller';
+import { AdminPaymentsController } from './controllers/admin-payments.controller';
+import { AdminRefundsController } from './controllers/admin-refunds.controller';
+import { AdminFraudController } from './controllers/admin-fraud.controller';
 import { AdminRestaurantsController } from './controllers/admin-restaurants.controller';
 import { AdminSettlementsController } from './controllers/admin-settlements.controller';
 import { SupportIssueEscalationJob } from './jobs/support-issue-escalation.job';
@@ -46,23 +50,25 @@ import { AuditModule } from '../audit/audit.module';
  * ✅ PlatformSettingsService for settings management
  *
  * Phase 2 Implementation (Core Data Entities):
- * ⏳ AdminOverviewController
- * ⏳ AdminRestaurantsController
- * ⏳ AdminOrdersController
- * ⏳ AdminPaymentsController
- * ⏳ AdminSettlementsController
+ * ✅ AdminOverviewController
+ * ✅ AdminRestaurantsController
+ * ✅ AdminOrdersController
+ * ✅ AdminPaymentsController
+ * ✅ AdminRefundsController
+ * ✅ AdminSettlementsController
+ * ✅ AdminAuditLogsController
  *
  * Phase 3+ Implementation:
  * ⏳ Additional controllers and services as needed
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([SupportIssue, PlatformSettings, Order, Tenant, PaymentTransaction, Refund]),
+    TypeOrmModule.forFeature([SupportIssue, PlatformSettings, Order, Tenant, PaymentTransaction, Refund, FraudReview, AuditLog]),
     ScheduleModule.forRoot(),
     AuditModule,
     TenantsModule,
     forwardRef(() => OrdersModule),
-    PaymentsModule,
+    forwardRef(() => PaymentsModule),
     NotificationsModule,
   ],
   controllers: [
@@ -72,17 +78,19 @@ import { AuditModule } from '../audit/audit.module';
     AdminOverviewController,
     AdminOrdersController,
     AdminHealthController,
-    // TODO: AdminFraudController - Disabled for MVP, enable in advanced phase
+    AdminPaymentsController,
+    AdminRefundsController,
+    AdminFraudController,
     AdminRestaurantsController,
-    // TODO: AdminPaymentsController - Dependency resolution issue with PaymentService
     AdminSettlementsController,
   ],
   providers: [
     SupportIssueService,
     PlatformSettingsService,
     SupportIssueEscalationJob,
+    AdminPaymentManagementService,
   ],
-  exports: [AuditModule, SupportIssueService, PlatformSettingsService],
+  exports: [AuditModule, SupportIssueService, PlatformSettingsService, AdminPaymentManagementService],
 })
 export class AdminModule implements OnModuleInit {
   constructor(private platformSettingsService: PlatformSettingsService) {}

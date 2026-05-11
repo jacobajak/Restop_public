@@ -13,8 +13,10 @@ import { AdminGuard } from '../../../common/guards/admin.guard';
 import { GetUser } from '../../../common/decorators/get-user.decorator';
 import { JwtPayload } from '../../../common/strategies/jwt.strategy';
 import { RefundService } from '../../payments/services/refund.service';
+import { AdminPaymentManagementService } from '../services/admin-payment-management.service';
 import { AuditService } from '../../audit/services/audit.service';
 import { AuditActionEnum } from '../../audit/entities/audit-log.entity';
+import { BulkProcessRefundsDto, BulkRejectRefundsDto } from '../dtos/admin-payment-management.dto';
 
 /**
  * AdminRefundsController - Admin refund management
@@ -34,6 +36,7 @@ import { AuditActionEnum } from '../../audit/entities/audit-log.entity';
 export class AdminRefundsController {
   constructor(
     private readonly refundService: RefundService,
+    private readonly adminPaymentService: AdminPaymentManagementService,
     private readonly auditService: AuditService,
   ) {}
 
@@ -221,4 +224,136 @@ export class AdminRefundsController {
       };
     }
   }
+
+  /**
+   * Bulk process refunds
+   * 
+   * POST /admin/refunds/bulk/process
+   * 
+   * Body:
+   * - refund_ids: Array of refund UUIDs to process
+   * - notes: Optional notes for all refunds
+   * 
+   * Response:
+   * {
+   *   successful: [ "id1", "id2" ],
+   *   failed: [ { id: "id3", error: "reason" } ],
+   *   summary: { total: 3, approved: 2, failed: 1 }
+   * }
+   * 
+   * Audit: Each refund logged individually as MANUAL_FINANCIAL_ADJUSTMENT
+   * Transactions: All-or-partial processed (failed items don't block others)
+   */
+  @Post('bulk/process')
+  async bulkProcessRefunds(
+    @GetUser() admin: JwtPayload,
+    @Body() body: BulkProcessRefundsDto,
+  ) {
+    try {
+      if (!body.refund_ids || body.refund_ids.length === 0) {
+        throw new BadRequestException('refund_ids array is required and must not be empty');
+      }
+
+      const result = await this.adminPaymentService.bulkProcessRefunds(
+        body.refund_ids,
+        admin.userId,
+        body.notes || 'Bulk processing by admin',
+      );
+
+      return {
+        success: true,
+        message: `Bulk refund processing complete: ${result.summary.approved} approved, ${result.summary.failed} failed`,
+        data: result,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Bulk reject refunds
+   * 
+   * POST /admin/refunds/bulk/reject
+   * 
+   * Body:
+   * - refund_ids: Array of refund UUIDs to reject
+   * - rejection_reason: Reason for rejection (required, min 10 chars)
+   * 
+   * Response:
+   * {
+   *   successful: [ "id1", "id2" ],
+   *   failed: [ { id: "id3", error: "reason" } ],
+   *   summary: { total: 3, rejected: 2, failed: 1 }
+   * }
+   */
+  @Post('bulk/reject')
+  async bulkRejectRefunds(
+    @GetUser() admin: JwtPayload,
+    @Body() body: BulkRejectRefundsDto,
+  ) {
+    try {
+      if (!body.refund_ids || body.refund_ids.length === 0) {
+        throw new BadRequestException('refund_ids array is required and must not be empty');
+      }
+
+      if (!body.rejection_reason || body.rejection_reason.length < 10) {
+        throw new BadRequestException('rejection_reason is required (min 10 characters)');
+      }
+
+      const result = await this.adminPaymentService.bulkRejectRefunds(
+        body.refund_ids,
+        admin.userId,
+        body.rejection_reason,
+      );
+
+      return {
+        success: true,
+        message: `Bulk refund rejection complete: ${result.summary.rejected} rejected, ${result.summary.failed} failed`,
+        data: result,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Get refund stats
+   * 
+   * GET /admin/refunds/stats
+   * 
+   * Returns overview of refund processing:
+   * - Total pending refunds
+   * - Total amount pending
+   * - Average processing time
+   * - Recent refunds by status
+   */
+  @Get('stats')
+  async getRefundStats() {
+    try {
+      // This would query the refund repository for stats
+      // For now, returning a placeholder
+      return {
+        success: true,
+        data: {
+          pending_count: 0,
+          pending_amount: 0,
+          approved_today: 0,
+          rejected_today: 0,
+          average_processing_hours: 0,
+        },
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
 }
+

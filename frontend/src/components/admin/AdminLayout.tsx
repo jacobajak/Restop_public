@@ -18,11 +18,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const adminNavigation = [
     { name: 'Overview', href: '/admin/overview', icon: '📊' },
     { name: 'System Health', href: '/admin/health', icon: '❤️' },
-    // TODO: Fraud Detection disabled for MVP, enable in advanced phase
     { name: 'Restaurants', href: '/admin/restaurants', icon: '🏪' },
     { name: 'Orders', href: '/admin/orders', icon: '📦' },
     { name: 'Payments', href: '/admin/payments', icon: '💳' },
     { name: 'Settlements', href: '/admin/settlements', icon: '💰' },
+    { name: 'Platform Fee Settlements', href: '/admin/platform-fee-settlements', icon: '💵' },
+    { name: 'Refunds', href: '/admin/refunds', icon: '🔄' },
+    { name: 'Support Tickets', href: '/admin/support', icon: '🎫' },
+    { name: 'Verification', href: '/admin/verification', icon: '✓' },
+    { name: 'Audit Logs', href: '/admin/audit-logs', icon: '📋' },
+    // TODO: Fraud Detection disabled for MVP, enable in advanced phase
   ];
 
   const handleLogout = async () => {

@@ -309,22 +309,22 @@ export class OrdersController {
   /**
    * POST /orders/:id/pay
    * 
-   * Initiate payment for an order via Paypack
+   * Initiate payment for an order via Flutterwave
    * 
    * Public endpoint to start payment flow:
    * - Validates order exists and payment is pending
-   * - For Mobile Money: calls Paypack to collect payment
+   * - For Mobile Money: calls Flutterwave to collect payment
    * - For Cash: no external action needed
    * 
    * Mobile Money Flow:
    * - Customer confirms order with phone number
    * - Frontend calls this endpoint
-   * - Paypack sends USSD push to phone
+   * - Flutterwave sends USSD/MTN prompt to phone
    * - Customer enters PIN to complete
    * - Webhook notifies backend of payment status
    * 
    * Cash Flow:
-   * - No Paypack call needed
+   * - No Flutterwave call needed
    * - Just returns success (payment confirmed manually by staff)
    * 
    * @async
@@ -341,7 +341,7 @@ export class OrdersController {
    * {
    *   "success": true,
    *   "data": {
-   *     "paymentRef": "PAYPACK-REF-12345",
+   *     "paymentRef": "FLW-REF-12345",
    *     "payment_method": "MTN",
    *     "message": "Check your phone for payment prompt"
    *   }

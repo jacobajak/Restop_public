@@ -127,40 +127,52 @@ export default function VerifyOTPPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8">
+    <div className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-500 to-info-600 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse-soft"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse-soft" style={{ animationDelay: '1s' }}></div>
+      
+      {/* Main card */}
+      <div className="relative bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-md w-full p-8 backdrop-blur-sm border border-white/20">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">DineFlow</h1>
-          <p className="text-gray-600 mt-2">Verify Your Identity</p>
+          <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-info-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <span className="text-2xl font-bold text-white">✓</span>
+          </div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary-600 to-info-600 bg-clip-text text-transparent">RESTOPI</h1>
+          <p className="text-neutral-600 dark:text-neutral-400 mt-2 text-lg font-medium">Verify Your Identity</p>
         </div>
 
         {/* Instructions */}
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-900">
-            We've sent a 6-digit verification code to <strong>{userEmail}</strong>
+        <div className="mb-6 p-4 bg-gradient-to-br from-info-50 to-info-100 dark:from-info-950 dark:to-info-900 border border-info-200 dark:border-info-800 rounded-xl">
+          <p className="text-sm text-info-900 dark:text-info-200 font-medium">
+            We've sent a 6-digit code to <strong>{userEmail}</strong>
           </p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-red-700 text-sm">{error}</p>
+          <div className="mb-6 p-4 bg-error-50 dark:bg-error-950 border border-error-200 dark:border-error-800 rounded-xl animate-slide-in">
+            <p className="text-error-700 dark:text-error-300 font-medium flex items-center gap-2">
+              <span className="text-lg">⚠️</span> {error}
+            </p>
           </div>
         )}
 
         {/* Success Message */}
         {success && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-            <p className="text-green-700 text-sm">{success}</p>
+          <div className="mb-6 p-4 bg-success-50 dark:bg-success-950 border border-success-200 dark:border-success-800 rounded-xl animate-slide-in">
+            <p className="text-success-700 dark:text-success-300 font-medium flex items-center gap-2">
+              <span className="text-lg">✅</span> {success}
+            </p>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleVerify} className="space-y-4">
+        <form onSubmit={handleVerify} className="space-y-6">
           {/* OTP Input */}
           <div>
-            <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="otp" className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-3">
               Verification Code
             </label>
             <input
@@ -171,44 +183,40 @@ export default function VerifyOTPPage() {
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
               maxLength={6}
-              className="w-full px-4 py-3 text-center text-2xl tracking-widest border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+              className="w-full px-4 py-4 text-center text-3xl tracking-[0.5em] font-mono border-b-2 border-b-neutral-200 dark:border-b-neutral-700 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:border-b-primary-500 focus:shadow-lg focus:shadow-primary-100/50 dark:focus:shadow-primary-900/20 transition-all duration-250 focus:outline-none disabled:opacity-60"
               disabled={isLoading || resendLoading}
             />
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 text-center">Enter the 6-digit code</p>
           </div>
 
           {/* Submit Button */}
           <button
             type="submit"
             disabled={isLoading || resendLoading || otp.length !== 6}
-            className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
-              isLoading || resendLoading || otp.length !== 6
-                ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
+            className="w-full py-3 px-4 rounded-xl font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 hover:shadow-lg disabled:from-neutral-300 disabled:to-neutral-400 disabled:text-neutral-500 disabled:cursor-not-allowed transition-all duration-250 shadow-md hover:shadow-hover active:scale-95 flex items-center justify-center gap-2"
           >
-            {isLoading ? 'Verifying...' : 'Verify OTP'}
+            {isLoading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>}
+            {isLoading ? 'Verifying...' : 'Verify Code'}
           </button>
         </form>
 
         {/* Resend Button */}
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600 mb-2">Didn't receive the code?</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-3">Didn't receive the code?</p>
           <button
             type="button"
             onClick={handleResend}
             disabled={resendLoading || isLoading || countdown > 0}
-            className={`text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors ${
-              resendLoading || isLoading || countdown > 0 ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+            className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code'}
           </button>
         </div>
 
         {/* Back to Login */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <p className="text-center text-sm text-gray-600">
-            <Link href="/auth/login" className="text-blue-600 hover:text-blue-700 font-medium">
+        <div className="mt-8 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+          <p className="text-center text-sm text-neutral-700 dark:text-neutral-300">
+            <Link href="/auth/login" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-semibold">
               Back to Login
             </Link>
           </p>
@@ -216,8 +224,8 @@ export default function VerifyOTPPage() {
 
         {/* Footer */}
         <div className="mt-4 text-center">
-          <p className="text-center text-xs text-gray-500">
-            DineFlow © 2026 | QR-Based Restaurant Ordering
+          <p className="text-center text-xs text-neutral-500 dark:text-neutral-400 font-medium">
+            RESTOPI © 2026 | QR-Based Restaurant Ordering Platform
           </p>
         </div>
       </div>

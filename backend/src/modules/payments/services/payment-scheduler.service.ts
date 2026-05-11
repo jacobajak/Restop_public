@@ -52,7 +52,7 @@ export class PaymentSchedulerService {
    * Settlement Reconciliation Job
    * Runs every 5 minutes to verify pending payments
    * 
-   * Purpose: Verify pending payments against Flutterwave/Paypack APIs,
+   * Purpose: Verify pending payments against Flutterwave API,
    * mark payments that have timed out (30+ minutes), and fix webhook failures
    */
   @Cron(CronExpression.EVERY_5_MINUTES)

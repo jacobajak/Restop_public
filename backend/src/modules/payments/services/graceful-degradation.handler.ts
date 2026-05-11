@@ -29,7 +29,7 @@ export class GracefulDegradationHandler {
   ) {}
 
   /**
-   * Handle payment provider failure (Flutterwave/Paypack down)
+   * Handle payment provider failure (Flutterwave down)
    *
    * Instead of crashing, mark payment as PENDING_RETRY and suggest next actions.
    * User can:

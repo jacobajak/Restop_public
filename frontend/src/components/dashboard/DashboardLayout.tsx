@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRoleAccess } from '@/hooks/useRoleAccess';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface DashboardLayoutProps {
@@ -12,8 +13,23 @@ interface DashboardLayoutProps {
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { user, logout } = useAuth();
   const { hasPageAccess, userRole } = useRoleAccess();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      // Redirect to login page after logout
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force redirect to login even if logout fails
+      router.push('/auth/login');
+    }
+  };
 
   const allNavigation = [
     { name: 'Orders', href: '/dashboard/orders', pageKey: 'orders' },
@@ -23,6 +39,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     { name: 'Payments', href: '/dashboard/payments', pageKey: 'payments' },
     { name: 'Reports', href: '/dashboard/reports', pageKey: 'reports' },
     { name: 'QR Code', href: '/dashboard/qrcode', pageKey: 'qrcode' },
+    { name: 'Support', href: '/dashboard/support', pageKey: 'support' },
     { name: 'Settings', href: '/dashboard/settings', pageKey: 'settings' },
   ];
 
@@ -96,11 +113,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             </div>
           )}
           <button
-            onClick={logout}
-            className="w-full flex items-center gap-2 px-4 py-2 text-red-400 hover:bg-red-900/20 rounded-lg transition"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="w-full flex items-center gap-2 px-4 py-2 text-red-400 hover:bg-red-900/20 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <LogOut size={20} />
-            {sidebarOpen && <span className="text-sm">Logout</span>}
+            {sidebarOpen && <span className="text-sm">{isLoggingOut ? 'Logging out...' : 'Logout'}</span>}
           </button>
         </div>
       </aside>

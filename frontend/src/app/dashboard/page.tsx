@@ -64,18 +64,18 @@ export default function DashboardPage() {
 
   console.log('[Dashboard] Rendering dashboard content for:', user?.name);
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-600 mt-1">Welcome back, {user?.name}</p>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">Welcome back, {user?.name}</p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-600">{user?.email}</p>
-              <p className="text-sm text-gray-500">{user?.role}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{user?.email}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{user?.role}</p>
             </div>
           </div>
         </div>
@@ -85,31 +85,31 @@ export default function DashboardPage() {
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900/50 p-6 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Total Orders</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total_orders}</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Total Orders</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{stats.total_orders}</p>
               </div>
               <div className="text-4xl text-blue-500 opacity-20">📦</div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900/50 p-6 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Pending Orders</p>
-                <p className="text-3xl font-bold text-orange-600 mt-2">{stats.pending_orders}</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Pending Orders</p>
+                <p className="text-3xl font-bold text-orange-600 dark:text-orange-400 mt-2">{stats.pending_orders}</p>
               </div>
               <div className="text-4xl text-orange-500 opacity-20">⏳</div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900/50 p-6 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Completed Orders</p>
-                <p className="text-3xl font-bold text-green-600 mt-2">{stats.completed_orders}</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Completed Orders</p>
+                <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">{stats.completed_orders}</p>
               </div>
               <div className="text-4xl text-green-500 opacity-20">✅</div>
             </div>
@@ -117,7 +117,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow mb-8">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900/50 mb-8 border border-gray-200 dark:border-gray-700">
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Quick Actions</h2>
           </div>

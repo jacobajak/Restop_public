@@ -29,25 +29,65 @@ export default function OrdersPage() {
       setIsLoading(true);
       setError('');
       try {
-        const response = await apiClient.get('/orders');
-        console.log('📦 Fetched orders response:', response.data);
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Request timeout - orders took too long to load')), 15000)
+        );
+
+        // Race between the API request and timeout
+        const response: any = await Promise.race([
+          apiClient.get('/orders'),
+          timeoutPromise,
+        ]);
+
+        console.log('📦 Fetched orders response:', response);
         console.log('📦 Orders data:', response.data.data);
         if (response.data.data && Array.isArray(response.data.data)) {
           console.log('📦 First order structure:', response.data.data[0]);
+          console.log(`📦 Total orders: ${response.data.data.length}`);
         }
         setOrders(response.data.data || []);
-      } catch (err) {
+      } catch (err: any) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load orders';
+        const errorStatus = err.response?.status;
+        
         console.error('Failed to load orders:', err);
-        setError('Failed to load orders');
+        console.error('Error message:', errorMessage);
+        console.error('Error status:', errorStatus);
+        
+        // Check if this is an auth error
+        if (errorStatus === 401 || errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+          console.log('🔐 Authentication failed - redirecting to login');
+          setError('🔐 Your session expired. Redirecting to login...');
+          // Redirect to login after a short delay
+          setTimeout(() => {
+            window.location.href = '/auth/login';
+          }, 2000);
+          return;
+        }
+        
+        // Provide more specific error messages
+        if (errorMessage.includes('timeout')) {
+          setError('⏱️ Order loading is taking too long. The server may be slow. Please try again.');
+        } else if (errorMessage.includes('network') || errorMessage.includes('Network')) {
+          setError('🌐 Network error. Please check your connection and try again.');
+        } else {
+          setError(`Failed to load orders: ${errorMessage}`);
+        }
         setOrders([]);
       } finally {
         setIsLoading(false);
       }
     };
 
+    // Start loading only if we have a tenant_id
     if (user?.tenant_id) {
       loadOrders();
+    } else {
+      // No tenant_id, stop loading
+      setIsLoading(false);
     }
+    // Only depend on user's tenant_id - primitive value only, NOT on hasPageAccess function
   }, [user?.tenant_id]);
 
   // Listen for real-time order updates

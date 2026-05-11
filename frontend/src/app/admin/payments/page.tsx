@@ -57,7 +57,8 @@ export default function AdminPaymentsPage() {
       });
 
       if (response.data.success) {
-        setPayments(response.data.data.payments || []);
+        // Backend refunds/payments endpoints not yet integrated
+        setPayments(response.data.data?.payments || response.data.payments || []);
       } else {
         setError('Failed to load payments');
       }

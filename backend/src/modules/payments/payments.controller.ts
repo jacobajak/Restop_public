@@ -10,6 +10,10 @@ import {
 import { PaymentService } from './payments.service';
 import { JwtAuthGuard } from '../../common/guards/jwt.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
+import {
+  PaymentRateLimitGuard,
+  PaymentInitiationFraudGuard,
+} from '../../common/guards/rate-limit.guard';
 import { GetTenant } from '../../common/decorators/get-tenant.decorator';
 
 /**
@@ -34,6 +38,10 @@ export class PaymentController {
    * 
    * POST /payments/initiate-mobile-money
    * 
+   * Rate Limiting:
+   * - General limit: 100 requests/min per tenant (PaymentRateLimitGuard)
+   * - Fraud prevention: 30 initiations/hour per tenant (PaymentInitiationFraudGuard)
+   * 
    * Request body:
    * {
    *   "order_id": "uuid",
@@ -52,6 +60,7 @@ export class PaymentController {
    * }
    */
   @Post('initiate-mobile-money')
+  @UseGuards(PaymentRateLimitGuard, PaymentInitiationFraudGuard)
   async initiateMobileMoneyPayment(
     @Body() body: { order_id: string; customer_phone: string },
     @GetTenant() tenantId: string,
@@ -77,6 +86,9 @@ export class PaymentController {
    * 
    * Called by restaurant staff to confirm customer has paid cash
    * 
+   * Rate Limiting:
+   * - 100 requests/min per tenant (PaymentRateLimitGuard)
+   * 
    * Request body:
    * {
    *   "order_id": "uuid"
@@ -93,6 +105,7 @@ export class PaymentController {
    * }
    */
   @Post('confirm-cash')
+  @UseGuards(PaymentRateLimitGuard)
   async confirmCashPayment(
     @Body() body: { order_id: string },
     @GetTenant() tenantId: string,
@@ -102,63 +115,6 @@ export class PaymentController {
     }
 
     return this.paymentService.confirmCashPayment(body.order_id, tenantId);
-  }
-
-  /**
-   * Handle mobile money provider webhook
-   * 
-   * POST /payments/webhook
-   * 
-   * Called by mobile money providers (MTN, Airtel) to notify of payment status
-   * 
-   * Header:
-   *   X-Payment-Provider: MTN | AIRTEL
-   *   X-Signature: webhook-signature
-   * 
-   * Body (provider specific):
-   * {
-   *   "transaction_id": "provider-transaction-id",
-   *   "status": "0",  // Provider-specific status code
-   *   "amount": 5000,
-   *   "phone": "+250787123456",
-   *   ...provider-specific-fields
-   * }
-   * 
-   * Response:
-   * {
-   *   "success": true,
-   *   "message": "Payment processed"
-   * }
-   */
-  @Post('webhook')
-  async handleWebhook(
-    @Body() payload: any,
-  ) {
-    // Extract provider and signature from headers
-    // This is handled differently because webhooks may not use JWT auth
-    const provider = payload.provider || 'UNKNOWN';
-    const signature = payload.signature || '';
-
-    try {
-      await this.paymentService.handleWebhookCallback(
-        provider,
-        payload,
-        signature,
-      );
-
-      return {
-        success: true,
-        message: 'Payment processed',
-      };
-    } catch (error: any) {
-      // Log webhook error for debugging
-      console.error('Webhook processing error:', error?.message);
-
-      return {
-        success: false,
-        message: error?.message || 'Unknown error',
-      };
-    }
   }
 
   /**

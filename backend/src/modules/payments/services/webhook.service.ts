@@ -71,28 +71,6 @@ export class WebhookService {
   }
 
   /**
-   * Verify Paypack webhook signature using HMAC-SHA256 (legacy)
-   */
-  verifyPaypackWebhookSignature(rawBody: string, signatureHeader: string): boolean {
-    const webhookSecret = this.configService.get('PAYPACK_WEBHOOK_SECRET');
-    if (!webhookSecret) {
-      this.logger.warn('PAYPACK_WEBHOOK_SECRET not configured');
-      return false;
-    }
-
-    const computed = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(rawBody)
-      .digest('base64');
-
-    const verified = computed === signatureHeader;
-    if (!verified) {
-      this.logger.warn('Paypack webhook signature verification failed');
-    }
-    return verified;
-  }
-
-  /**
    * Process Flutterwave webhook event
    * 
    * Flutterwave sends charge.completed events when payment succeeds.
@@ -161,9 +139,10 @@ export class WebhookService {
   }
 
   /**
-   * Process Paypack webhook event (legacy)
+   * Process Paypack webhook event (legacy - REMOVED)
+   * @deprecated This method has been removed - using Flutterwave exclusively
    */
-  async processPaypackWebhookEvent(event: any): Promise<void> {
+  async processPaypackWebhookEvent_REMOVED(event: any): Promise<void> {
     // Only process transaction:processed events
     if (event.kind !== 'transaction:processed') {
       this.logger.debug(`Ignoring non-processed event kind: ${event.kind}`);
@@ -257,17 +236,12 @@ export class WebhookService {
     headers: Record<string, any>,
     parsedEvent: any,
   ): Promise<{ success: boolean; message: string }> {
-    // Detect Flutterwave webhook
-    if (headers['x-verif-hash']) {
-      return this.handleFlutterwaveWebhook(rawBody, headers['x-verif-hash'], parsedEvent);
+    // Only handle Flutterwave webhooks (using Flutterwave exclusively)
+    if (!headers['x-verif-hash']) {
+      throw new BadRequestException('Missing x-verif-hash header - only Flutterwave webhooks are supported');
     }
 
-    // Detect Paypack webhook
-    if (headers['x-paypack-signature']) {
-      return this.handlePaypackWebhook(rawBody, headers['x-paypack-signature'], parsedEvent);
-    }
-
-    throw new BadRequestException('Unknown webhook provider - no signature header found');
+    return this.handleFlutterwaveWebhook(rawBody, headers['x-verif-hash'], parsedEvent);
   }
 
   /**
@@ -297,28 +271,18 @@ export class WebhookService {
   }
 
   /**
-   * Handle Paypack webhook callback (legacy)
+   * REMOVED: Paypack webhook handler (using Flutterwave exclusively)
+   * @deprecated This method has been removed
+   * @see handleFlutterwaveWebhook for the Flutterwave implementation
    */
-  private async handlePaypackWebhook(
-    rawBody: string,
-    signatureHeader: string,
-    parsedEvent: any,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private async handlePaypackWebhook_REMOVED(
+    _rawBody: string,
+    _signatureHeader: string,
+    _parsedEvent: any,
   ): Promise<{ success: boolean; message: string }> {
-    // Verify signature
-    if (!this.verifyPaypackWebhookSignature(rawBody, signatureHeader)) {
-      throw new BadRequestException('Invalid Paypack webhook signature');
-    }
-
-    try {
-      // Process the event
-      await this.processPaypackWebhookEvent(parsedEvent);
-      return { success: true, message: 'Paypack webhook processed successfully' };
-    } catch (error: any) {
-      this.logger.error(
-        `Error processing Paypack webhook: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
+    // Legacy code - Paypack integration removed
+    // All payment processing now uses Flutterwave exclusively
+    throw new Error('Paypack webhook handler has been removed. Use Flutterwave only.');
   }
 }

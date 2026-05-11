@@ -12,15 +12,20 @@ interface RolePermissions {
 }
 
 const PAGE_ACCESS_RULES: RolePermissions = {
-  // Analytics and reports
-  'analytics': ['TENANT_OWNER', 'TENANT_MANAGER'],
-  'reports': ['TENANT_OWNER', 'TENANT_MANAGER'],
+  // Core features (ALWAYS VISIBLE for MVP)
+  'orders': ['TENANT_OWNER', 'TENANT_MANAGER', 'KITCHEN_STAFF', 'CASHIER'],
+  'tables': ['TENANT_OWNER', 'TENANT_MANAGER'],
   
-  // Menu management
+  // SIMPLE MODE: Hidden for MVP (shown only after 10+ orders)
+  // Analytics and reports
+  'analytics': ['TENANT_OWNER'],  // Only for owner, not in simple mode
+  'reports': ['TENANT_OWNER'],    // Only for owner, not in simple mode
+  
+  // Menu management (owner/manager only)
   'menu': ['TENANT_OWNER', 'TENANT_MANAGER'],
   
-  // Orders page
-  'orders': ['TENANT_OWNER', 'TENANT_MANAGER', 'KITCHEN_STAFF', 'CASHIER'],
+  // Support issues (all tenant users can report) - HIDDEN IN SIMPLE MODE
+  'support': [],  // Hidden for now - will show after MVP
   
   // Settings and staff management
   'settings': ['TENANT_OWNER', 'TENANT_MANAGER'],
@@ -28,14 +33,11 @@ const PAGE_ACCESS_RULES: RolePermissions = {
   'settings.profile': ['TENANT_OWNER', 'TENANT_MANAGER'],
   'settings.payment': ['TENANT_OWNER'],
   
-  // Tables management
-  'tables': ['TENANT_OWNER', 'TENANT_MANAGER'],
-  
   // QR code
   'qrcode': ['TENANT_OWNER', 'TENANT_MANAGER'],
   
-  // Payments and settlements
-  'payments': ['TENANT_OWNER', 'TENANT_MANAGER', 'CASHIER'],
+  // Payments and settlements - HIDDEN FOR NOW
+  'payments': [],  // Hidden in simple mode - use QR code instead
 };
 
 const FEATURE_ACCESS_RULES: RolePermissions = {

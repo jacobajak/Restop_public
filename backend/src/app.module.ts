@@ -104,7 +104,7 @@ import { OtpChallenge, LoginAttempt } from './modules/auth/entities/otp-challeng
         ],
         migrations: [__dirname + '/database/migrations/**/*{.ts,.js}'],
         migrationsRun: true,
-        synchronize: configService.get('NODE_ENV') === 'development',
+        synchronize: false,
         logging: configService.get('NODE_ENV') === 'development',
       }),
     }),

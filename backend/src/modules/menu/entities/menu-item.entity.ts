@@ -28,8 +28,16 @@ export class MenuItem {
   @Column()
   description: string;
 
-  @Column({ type: 'int' })
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, comment: 'Price in the tenant\'s currency' })
   price: number;
+
+  @Column({
+    type: 'varchar',
+    length: 3,
+    nullable: true,
+    comment: 'Currency code (ISO 4217) for this menu item price (inherits from tenant if null)',
+  })
+  currency: string;
 
   @Column({ nullable: true })
   image_url: string;

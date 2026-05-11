@@ -1,5 +1,0 @@
-Status: 500
-Response: {
-  "statusCode": 500,
-  "message": "Internal server error"
-}

@@ -46,19 +46,18 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             disabled={disabled}
             className={`
-              w-full px-4 py-2.5
-              text-base text-gray-900 dark:text-gray-100
-              placeholder-gray-500 dark:placeholder-gray-400
-              bg-white dark:bg-gray-900
-              border rounded-lg transition-colors duration-150
-              focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-0
-              dark:focus-visible:ring-orange-400
+              w-full px-4 py-3
+              text-base text-neutral-900 dark:text-neutral-100
+              placeholder-neutral-400 dark:placeholder-neutral-500
+              bg-white dark:bg-neutral-900
+              border-b-2 rounded-lg transition-all duration-250
+              focus:outline-none
               ${
                 error
-                  ? 'border-red-500 focus-visible:ring-red-500 dark:focus-visible:ring-red-400'
-                  : 'border-gray-300 dark:border-gray-700'
+                  ? 'border-b-error-500 focus:shadow-lg focus:shadow-error-100 dark:focus:shadow-error-900/20'
+                  : 'border-b-neutral-200 dark:border-b-neutral-700 focus:border-b-primary-500 focus:shadow-lg focus:shadow-primary-100/50 dark:focus:shadow-primary-900/20'
               }
-              ${disabled ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-60' : ''}
+              ${disabled ? 'bg-neutral-50 dark:bg-neutral-900 cursor-not-allowed opacity-60 border-b-neutral-200 dark:border-b-neutral-700' : ''}
               ${icon && iconPosition === 'left' ? 'pl-10' : ''}
               ${icon && iconPosition === 'right' ? 'pr-10' : ''}
               ${className}

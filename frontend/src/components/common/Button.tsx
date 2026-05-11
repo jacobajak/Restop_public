@@ -21,34 +21,38 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: `
-    bg-primary-500 text-white hover:bg-primary-600
+    bg-gradient-to-r from-primary-500 to-primary-600 text-white
+    hover:from-primary-600 hover:to-primary-700 hover:shadow-lg
     focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500
-    disabled:bg-neutral-300 disabled:text-neutral-500 disabled:cursor-not-allowed
-    active:scale-95 transition-all duration-150
+    disabled:from-neutral-300 disabled:to-neutral-400 disabled:text-neutral-500 disabled:cursor-not-allowed disabled:shadow-none
+    active:scale-95 transition-all duration-250 shadow-md hover:shadow-hover
   `,
   secondary: `
-    bg-neutral-200 text-neutral-900 hover:bg-neutral-300
-    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500
-    disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed
-    active:scale-95 transition-all duration-150
+    bg-white dark:bg-neutral-800 text-primary-600 dark:text-primary-400 border-2 border-primary-200 dark:border-primary-800
+    hover:bg-primary-50 dark:hover:bg-neutral-700 hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-md
+    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500
+    disabled:bg-neutral-100 dark:disabled:bg-neutral-900 disabled:text-neutral-400 disabled:border-neutral-300 dark:disabled:border-neutral-700 disabled:cursor-not-allowed
+    active:scale-95 transition-all duration-250 shadow-sm
   `,
   danger: `
-    bg-error text-white hover:bg-red-600
-    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error
-    disabled:bg-neutral-300 disabled:text-neutral-500 disabled:cursor-not-allowed
-    active:scale-95 transition-all duration-150
+    bg-gradient-to-r from-error-500 to-error-600 text-white
+    hover:from-error-600 hover:to-error-700 hover:shadow-lg
+    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error-500
+    disabled:from-neutral-300 disabled:to-neutral-400 disabled:text-neutral-500 disabled:cursor-not-allowed disabled:shadow-none
+    active:scale-95 transition-all duration-250 shadow-md hover:shadow-hover
   `,
   success: `
-    bg-success text-white hover:bg-green-600
-    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-success
-    disabled:bg-neutral-300 disabled:text-neutral-500 disabled:cursor-not-allowed
-    active:scale-95 transition-all duration-150
+    bg-gradient-to-r from-success-500 to-success-600 text-white
+    hover:from-success-600 hover:to-success-700 hover:shadow-lg
+    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-success-500
+    disabled:from-neutral-300 disabled:to-neutral-400 disabled:text-neutral-500 disabled:cursor-not-allowed disabled:shadow-none
+    active:scale-95 transition-all duration-250 shadow-md hover:shadow-hover
   `,
   ghost: `
-    bg-transparent text-primary-500 hover:bg-primary-50
+    bg-transparent text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950
     focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500
     disabled:text-neutral-400 disabled:cursor-not-allowed
-    active:scale-95 transition-all duration-150
+    active:scale-95 transition-all duration-250
   `,
 };
 

@@ -7,10 +7,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order, PaymentStatusEnum } from '../../orders/entities/order.entity';
+import { Tenant } from '../../tenants/entities/tenant.entity';
 import { TenantPaymentAccount } from '../entities/tenant-payment-account.entity';
 import { Payout, PayoutStatusEnum } from '../entities/payout.entity';
 import { PaymentTransaction, TransactionKindEnum } from '../entities/payment.entity';
-import { PaypackIntegrationService } from './paypack-integration.service';
+import { FlutterwaveIntegrationService } from './flutterwave-integration.service';
+import { AdminWalletService } from './admin-wallet.service';
 import * as crypto from 'crypto';
 
 /**
@@ -23,8 +25,8 @@ import * as crypto from 'crypto';
  * Flow:
  * 1. Load tenant and verified payment account
  * 2. Create payout record with PENDING status
- * 3. Call Paypack cashout
- * 4. Update payout with Paypack reference
+ * 3. Call Flutterwave payout
+ * 4. Update payout with Flutterwave reference
  */
 @Injectable()
 export class PayoutService {
@@ -33,17 +35,20 @@ export class PayoutService {
   constructor(
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
+    @InjectRepository(Tenant)
+    private readonly tenantRepository: Repository<Tenant>,
     @InjectRepository(TenantPaymentAccount)
     private readonly tenantPaymentAccountRepository: Repository<TenantPaymentAccount>,
     @InjectRepository(Payout)
     private readonly payoutRepository: Repository<Payout>,
     @InjectRepository(PaymentTransaction)
     private readonly paymentTransactionRepository: Repository<PaymentTransaction>,
-    private readonly paypackService: PaypackIntegrationService,
+    private readonly flutterwaveService: FlutterwaveIntegrationService,
+    private readonly adminWalletService: AdminWalletService,
   ) {}
 
   /**
-   * Generate idempotency key for Paypack cashout call
+   * Generate reference key for Flutterwave payout call
    */
   private generateIdempotencyKey(txRef: string, kind: string): string {
     return `${txRef}-${kind}-${crypto.randomBytes(4).toString('hex')}`;
@@ -144,50 +149,80 @@ export class PayoutService {
       return payout;
     }
 
-    // Create payout record
+    // Calculate commission (10% of order total)
+    const COMMISSION_RATE = 0.10;
+    const commissionAmount = Math.round(order.total_amount * COMMISSION_RATE);
+    const payoutAmount = order.total_amount - commissionAmount;
+
+    // Create payout record with commission deducted
     const payout = this.payoutRepository.create({
       order_id: orderId,
       tenant_id: order.tenant_id,
       tenant_payment_account_id: tenantAccount.id,
-      amount: order.total_amount,
+      amount: payoutAmount,  // ← DEDUCTED BY COMMISSION
       status: PayoutStatusEnum.PENDING,
     });
 
     await this.payoutRepository.save(payout);
 
     try {
-      // Create idempotency key
-      const idempotencyKey = this.generateIdempotencyKey(order.tx_ref, 'cashout');
+      // Create reference for Flutterwave call
+      const reference = this.generateIdempotencyKey(order.tx_ref, 'cashout');
 
-      // Call Paypack cashout
-      const paypackResponse = await this.paypackService.initiateCashout({
-        amount: order.total_amount,
-        phone_number: tenantAccount.momo_number,
-        order_id: orderId,
-        idempotency_key: idempotencyKey,
+      // Load tenant to get business name
+      const tenant = await this.tenantRepository.findOne({ where: { id: order.tenant_id } });
+      const beneficiaryName = tenant?.name || 'Tenant Payout';
+
+      // Call Flutterwave payout with REDUCED amount (commission already deducted)
+      const flutterwaveResponse = await this.flutterwaveService.initiatePayout({
+        reference: reference,
+        amount: payoutAmount,  // ← REDUCED by commission
+        beneficiary_name: beneficiaryName,
+        beneficiary_account: tenantAccount.momo_number,
+        currency: 'RWF',
       });
 
-      // Update payout with Paypack reference
-      payout.provider_ref = paypackResponse.ref;
-      payout.status = this.mapCashoutStatus(paypackResponse.status);
-      payout.raw_payload = paypackResponse;
+      // Update payout with Flutterwave reference
+      payout.provider_ref = flutterwaveResponse.payout_id;
+      payout.status = this.mapPayoutStatus(flutterwaveResponse.status);
+      payout.raw_payload = flutterwaveResponse;
       await this.payoutRepository.save(payout);
 
-      // Record payment transaction for cashout
+      // Record payment transaction for cashout (with commission deducted)
       const paymentTransaction = this.paymentTransactionRepository.create({
         order_id: orderId,
         tenant_id: order.tenant_id,
-        provider: 'PAYPACK',
+        provider: 'FLUTTERWAVE',
         kind: TransactionKindEnum.CASHOUT,
-        provider_ref: paypackResponse.ref,
-        amount: order.total_amount,
-        status: paypackResponse.status,
-        raw_payload: paypackResponse,
+        provider_ref: flutterwaveResponse.payout_id,
+        amount: payoutAmount,  // ← REDUCED by commission
+        currency: order.currency || 'RWF',
+        status: flutterwaveResponse.status,
+        raw_payload: flutterwaveResponse,
       });
       await this.paymentTransactionRepository.save(paymentTransaction);
 
+      // Record platform commission to admin wallet
+      try {
+        await this.adminWalletService.creditPlatformFee(
+          commissionAmount,
+          order.tenant_id,
+          `COMMISSION_${orderId}`,
+          `Commission from order ${orderId}`,
+        );
+
+        this.logger.log(
+          `Platform commission recorded: ${commissionAmount} RWF for order ${orderId}`,
+        );
+      } catch (commissionError) {
+        this.logger.error(
+          `Failed to record platform commission for order ${orderId}: ${commissionError.message}`,
+        );
+        // Don't fail the payout if commission recording fails
+      }
+
       this.logger.log(
-        `Instant payout initiated for order ${orderId}: ref=${paypackResponse.ref}`,
+        `Instant payout initiated for order ${orderId}: ref=${flutterwaveResponse.payout_id}, payout=${payoutAmount}, commission=${commissionAmount}`,
       );
 
       return payout;
@@ -208,13 +243,13 @@ export class PayoutService {
   }
 
   /**
-   * Map Paypack status to payout status
+   * Map Flutterwave status to payout status
    */
-  private mapCashoutStatus(paypackStatus: string): PayoutStatusEnum {
-    if (paypackStatus === 'successful') {
+  private mapPayoutStatus(flutterwaveStatus: string): PayoutStatusEnum {
+    if (flutterwaveStatus === 'success' || flutterwaveStatus === 'completed') {
       return PayoutStatusEnum.SUCCESSFUL;
     }
-    if (paypackStatus === 'failed') {
+    if (flutterwaveStatus === 'failed') {
       return PayoutStatusEnum.FAILED;
     }
     return PayoutStatusEnum.PENDING;
@@ -254,21 +289,22 @@ export class PayoutService {
         'cashout-retry',
       );
 
-      // Call Paypack cashout
-      const paypackResponse = await this.paypackService.initiateCashout({
+      // Call Flutterwave payout
+      const payoutResult = await this.flutterwaveService.initiatePayout({
+        reference: idempotencyKey,
         amount: payout.amount,
-        phone_number: payout.tenant_payment_account.momo_number,
-        order_id: payout.order_id,
-        idempotency_key: idempotencyKey,
+        beneficiary_name: payout.tenant.name,
+        beneficiary_account: payout.tenant_payment_account.momo_number,
+        currency: 'RWF',
       });
 
       // Update payout
-      payout.provider_ref = paypackResponse.ref;
-      payout.status = this.mapCashoutStatus(paypackResponse.status);
-      payout.raw_payload = paypackResponse;
+      payout.provider_ref = payoutResult.payout_id;
+      payout.status = this.mapPayoutStatus(payoutResult.status);
+      payout.raw_payload = payoutResult;
       await this.payoutRepository.save(payout);
 
-      this.logger.log(`Payout ${payoutId} retried: ref=${paypackResponse.ref}`);
+      this.logger.log(`Payout ${payoutId} retried: ref=${payoutResult.payout_id}`);
 
       return payout;
     } catch (error) {

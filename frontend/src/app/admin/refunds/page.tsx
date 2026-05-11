@@ -73,30 +73,12 @@ export default function AdminRefundsPage() {
   const fetchRefunds = async (pageNum: number = 1) => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
-        limit: limit.toString(),
-        offset: ((pageNum - 1) * limit).toString(),
-      });
-
-      if (statusFilter) params.append('status', statusFilter);
-      if (tenantFilter) params.append('tenant_id', tenantFilter);
-      if (minAmount) params.append('min_amount', minAmount);
-      if (maxAmount) params.append('max_amount', maxAmount);
-
-      const response = await fetch(`/api/admin/refunds?${params}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      const data: ListResponse = await response.json();
-      if (data.success && data.data) {
-        setRefunds(data.data.data);
-        setTotal(data.data.total);
-        setPage(pageNum);
-      } else {
-        setError(data.error || 'Failed to load refunds');
-      }
+      const token = localStorage.getItem('token');
+      // NOTE: Refunds endpoint is not yet available in admin API
+      // Placeholder implementation - functionality pending backend integration
+      setError('Refunds management is not yet available. Backend API in progress.');
+      setRefunds([]);
+      setPage(pageNum);
     } catch (err) {
       setError('Error loading refunds');
     } finally {
@@ -113,11 +95,14 @@ export default function AdminRefundsPage() {
 
     try {
       setApproving(true);
-      const response = await fetch(`/api/admin/refunds/${selectedRefund.id}/approve`, {
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      
+      const response = await fetch(`${apiUrl}/admin/refunds/${selectedRefund.id}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ notes: approvalNotes }),
       });
@@ -144,11 +129,14 @@ export default function AdminRefundsPage() {
 
     try {
       setRejecting(true);
-      const response = await fetch(`/api/admin/refunds/${selectedRefund.id}/reject`, {
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+      
+      const response = await fetch(`${apiUrl}/admin/refunds/${selectedRefund.id}/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ notes: rejectionNotes }),
       });

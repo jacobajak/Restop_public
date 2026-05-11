@@ -1,14 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CircuitBreaker, CircuitBreakerConfig } from './circuit-breaker';
 import { FlutterwaveIntegrationService } from './flutterwave-integration.service';
-import { PaypackIntegrationService } from './paypack-integration.service';
 
 /**
  * Resilient External Services Manager
  *
  * Wraps all external API calls with circuit breaker protection:
  * - Flutterwave Payment API
- * - Paypack Payment API
  * - Email Service
  *
  * When services are down:
@@ -28,12 +26,10 @@ export class ResilientExternalServicesManager {
   private readonly logger = new Logger(ResilientExternalServicesManager.name);
 
   private flutterwaveBreaker: CircuitBreaker;
-  private paypackBreaker: CircuitBreaker;
   private emailBreaker: CircuitBreaker;
 
   constructor(
     private flutterwaveService: FlutterwaveIntegrationService,
-    private paypackService: PaypackIntegrationService,
   ) {
     this.initializeBreakers();
   }
@@ -53,17 +49,6 @@ export class ResilientExternalServicesManager {
       onClose: () => this.alertAdminCircuitClosed('Flutterwave'),
     };
 
-    // Paypack API - medium threshold
-    const paypackConfig: CircuitBreakerConfig = {
-      name: 'PaypackAPI',
-      failureThreshold: 3,
-      successThreshold: 2,
-      timeout: 30000,
-      resetTimeout: 60000,
-      onOpen: () => this.alertAdminCircuitOpened('Paypack'),
-      onClose: () => this.alertAdminCircuitClosed('Paypack'),
-    };
-
     // Email Service - higher threshold (less critical than payment)
     const emailConfig: CircuitBreakerConfig = {
       name: 'EmailService',
@@ -76,7 +61,6 @@ export class ResilientExternalServicesManager {
     };
 
     this.flutterwaveBreaker = new CircuitBreaker(flutterwaveConfig);
-    this.paypackBreaker = new CircuitBreaker(paypackConfig);
     this.emailBreaker = new CircuitBreaker(emailConfig);
 
     this.logger.log('✅ All circuit breakers initialized');
@@ -109,19 +93,6 @@ export class ResilientExternalServicesManager {
   }
 
   /**
-   * Initialize Paypack payment with circuit breaker protection
-   *
-   * @param payload - Payment payload
-   * @returns Paypack transaction reference
-   * @throws ServiceUnavailableException if circuit is OPEN
-   */
-  async initiatePaypackPayment(payload: any): Promise<any> {
-    return this.paypackBreaker.execute(() =>
-      this.paypackService.initiateCashin(payload),
-    );
-  }
-
-  /**
    * Send email with circuit breaker protection
    *
    * @returns Send result
@@ -145,10 +116,6 @@ export class ResilientExternalServicesManager {
         ...this.flutterwaveBreaker.getState(),
         isAvailable: this.flutterwaveBreaker.isAvailable(),
       },
-      paypack: {
-        ...this.paypackBreaker.getState(),
-        isAvailable: this.paypackBreaker.isAvailable(),
-      },
       email: {
         ...this.emailBreaker.getState(),
         isAvailable: this.emailBreaker.isAvailable(),
@@ -164,22 +131,17 @@ export class ResilientExternalServicesManager {
   areAllServicesAvailable(): boolean {
     return (
       this.flutterwaveBreaker.isAvailable() &&
-      this.paypackBreaker.isAvailable() &&
       this.emailBreaker.isAvailable()
     );
   }
 
   /**
-   * Check if critical payment services are available
-   * Returns true if at least one payment provider is working
+   * Check if payment service is available
    *
-   * @returns True if at least Flutterwave or Paypack is available
+   * @returns True if Flutterwave is available
    */
   arePaymentServicesAvailable(): boolean {
-    return (
-      this.flutterwaveBreaker.isAvailable() ||
-      this.paypackBreaker.isAvailable()
-    );
+    return this.flutterwaveBreaker.isAvailable();
   }
 
   /**
@@ -188,13 +150,10 @@ export class ResilientExternalServicesManager {
    *
    * @param service - Service name to reset
    */
-  resetCircuit(service: 'flutterwave' | 'paypack' | 'email'): void {
+  resetCircuit(service: 'flutterwave' | 'email'): void {
     switch (service) {
       case 'flutterwave':
         this.flutterwaveBreaker.reset();
-        break;
-      case 'paypack':
-        this.paypackBreaker.reset();
         break;
       case 'email':
         this.emailBreaker.reset();

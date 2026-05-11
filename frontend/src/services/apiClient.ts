@@ -128,14 +128,19 @@ apiClient.interceptors.response.use(
          * POST /auth/refresh -> returns new JWT token
          * Server validates refresh token from httpOnly cookie
          */
-        const response = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
-          {}, // Empty body; server uses cookie for refresh token
-          { withCredentials: true } // Include cookies
-        );
+        const response = await Promise.race([
+          axios.post(
+            `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
+            {}, // Empty body; server uses cookie for refresh token
+            { withCredentials: true } // Include cookies
+          ),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Token refresh timeout')), 10000)
+          ),
+        ]);
 
         // Extract new token from response
-        const newToken = response.data.data?.access_token;
+        const newToken = (response as any).data.data?.access_token;
         if (!newToken) {
           throw new Error('No token in refresh response');
         }

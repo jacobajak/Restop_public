@@ -40,29 +40,28 @@ export function middleware(request: NextRequest) {
 
   // If token exists and trying to access auth routes, redirect based on user role
   if (token && (pathname === PUBLIC_ROUTES.login || pathname === PUBLIC_ROUTES.register)) {
-    console.log('[MIDDLEWARE] Token detected on auth page, checking user role');
+    console.log('[MIDDLEWARE] Token detected on auth page, determining redirect URL');
     
-    // Parse JWT payload to get user role (without verification, just decode)
+    let redirectUrl = '/dashboard'; // Default fallback
+    
+    // Try to decode JWT payload to get user role
     try {
       const tokenParts = token.split('.');
       if (tokenParts.length === 3) {
         const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
         const userRole = payload.role;
-        console.log('[MIDDLEWARE] User role:', userRole);
+        console.log('[MIDDLEWARE] User role from JWT:', userRole);
         
-        // Redirect to dashboard for tenants, admin to admin overview
-        const redirectUrl = userRole === 'PLATFORM_ADMIN' ? '/admin/overview' : '/dashboard';
-        console.log('[MIDDLEWARE] Redirecting to:', redirectUrl);
-        return NextResponse.redirect(new URL(redirectUrl, request.url));
+        if (userRole === 'PLATFORM_ADMIN') {
+          redirectUrl = '/admin/overview';
+        }
       }
     } catch (e) {
-      console.error('[MIDDLEWARE] Failed to decode token:', e);
-      // Fall back to dashboard if token decode fails
+      console.warn('[MIDDLEWARE] Failed to decode JWT token, checking request headers or using default');
     }
     
-    // Default fallback
-    console.log('[MIDDLEWARE] Defaulting to dashboard');
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    console.log('[MIDDLEWARE] Redirecting authenticated user to:', redirectUrl);
+    return NextResponse.redirect(new URL(redirectUrl, request.url));
   }
 
   // Allow access to public routes

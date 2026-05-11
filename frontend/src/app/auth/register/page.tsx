@@ -108,26 +108,15 @@ export default function RegisterPage() {
         tenant_slug: formData.slug,
       });
 
-      // Auto-login after successful registration
-      if (response.data.access_token || response.data.data?.access_token) {
-        console.log('[Register] Registration successful, auto-logging in');
-        
-        // Store token and user info (handle both response structures)
-        const token = response.data.access_token || response.data.data.access_token;
-        const user = response.data.user || response.data.data.user;
-        
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
-        
-        // Store token in cookies for middleware authentication
-        document.cookie = `token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Strict`;
-        
-        // Redirect to dashboard
-        console.log('[Register] Redirecting to dashboard');
-        router.push('/dashboard');
+      // Registration successful - redirect to login with pre-filled email
+      // The response structure is { success: true, data: { success: true, email, requiresLogin } }
+      const registrationData = response.data.data || response.data;
+      if (registrationData.requiresLogin || registrationData.success) {
+        console.log('[Register] Registration successful, redirecting to login');
+        router.push('/auth/login?email=' + encodeURIComponent(formData.email) + '&message=reg_success');
       } else {
-        // Fallback: redirect to login if auto-login doesn't work
-        console.log('[Register] No token in response, redirecting to login');
+        // Fallback: redirect to login if response structure is unexpected
+        console.log('[Register] Unexpected response structure, redirecting to login');
         router.push('/auth/login?email=' + encodeURIComponent(formData.email) + '&message=reg_success');
       }
     } catch (err: any) {
@@ -139,26 +128,36 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8">
+    <div className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-500 to-info-600 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse-soft"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse-soft" style={{ animationDelay: '1s' }}></div>
+      
+      {/* Main card */}
+      <div className="relative bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-md w-full p-8 backdrop-blur-sm border border-white/20">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">DineFlow</h1>
-          <p className="text-gray-600 mt-2">Create Your Restaurant Account</p>
+          <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-info-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <span className="text-2xl font-bold text-white">R</span>
+          </div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary-600 to-info-600 bg-clip-text text-transparent">RESTOPI</h1>
+          <p className="text-neutral-600 dark:text-neutral-400 mt-2 text-lg font-medium">Create Your Restaurant</p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-red-700 text-sm">{error}</p>
+          <div className="mb-6 p-4 bg-error-50 dark:bg-error-950 border border-error-200 dark:border-error-800 rounded-xl animate-slide-in">
+            <p className="text-error-700 dark:text-error-300 font-medium flex items-center gap-2">
+              <span className="text-lg">⚠️</span> {error}
+            </p>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Full Name */}
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="name" className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">
               Full Name
             </label>
             <input
@@ -168,14 +167,14 @@ export default function RegisterPage() {
               value={formData.name}
               onChange={handleInputChange}
               placeholder="John Restaurant Owner"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-4 py-3 border-b-2 border-b-neutral-200 dark:border-b-neutral-700 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-b-primary-500 focus:shadow-lg focus:shadow-primary-100/50 dark:focus:shadow-primary-900/20 transition-all duration-250 focus:outline-none"
               disabled={isLoading}
             />
           </div>
 
           {/* Restaurant Name */}
           <div>
-            <label htmlFor="restaurantName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="restaurantName" className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">
               Restaurant Name
             </label>
             <input
@@ -185,14 +184,14 @@ export default function RegisterPage() {
               value={formData.restaurantName}
               onChange={handleInputChange}
               placeholder="Your Restaurant Name"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-4 py-3 border-b-2 border-b-neutral-200 dark:border-b-neutral-700 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-b-primary-500 focus:shadow-lg focus:shadow-primary-100/50 dark:focus:shadow-primary-900/20 transition-all duration-250 focus:outline-none"
               disabled={isLoading}
             />
           </div>
 
           {/* Slug */}
           <div>
-            <label htmlFor="slug" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="slug" className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">
               Restaurant URL Slug
             </label>
             <input
@@ -202,15 +201,15 @@ export default function RegisterPage() {
               value={formData.slug}
               onChange={handleInputChange}
               placeholder="restaurant-name"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-4 py-3 border-b-2 border-b-neutral-200 dark:border-b-neutral-700 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-b-primary-500 focus:shadow-lg focus:shadow-primary-100/50 dark:focus:shadow-primary-900/20 transition-all duration-250 focus:outline-none"
               disabled={isLoading}
             />
-            <p className="text-xs text-gray-500 mt-1">Used in your restaurant URL: app.dineflow.io/menu/{formData.slug}</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Used in your restaurant URL: app.restopi.io/menu/{formData.slug}</p>
           </div>
 
           {/* Email */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">
               Email Address
             </label>
             <input
@@ -220,14 +219,14 @@ export default function RegisterPage() {
               value={formData.email}
               onChange={handleInputChange}
               placeholder="owner@restaurant.com"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-4 py-3 border-b-2 border-b-neutral-200 dark:border-b-neutral-700 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-b-primary-500 focus:shadow-lg focus:shadow-primary-100/50 dark:focus:shadow-primary-900/20 transition-all duration-250 focus:outline-none"
               disabled={isLoading}
             />
           </div>
 
           {/* Password */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">
               Password
             </label>
             <input
@@ -237,15 +236,15 @@ export default function RegisterPage() {
               value={formData.password}
               onChange={handleInputChange}
               placeholder="••••••••"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-4 py-3 border-b-2 border-b-neutral-200 dark:border-b-neutral-700 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-b-primary-500 focus:shadow-lg focus:shadow-primary-100/50 dark:focus:shadow-primary-900/20 transition-all duration-250 focus:outline-none"
               disabled={isLoading}
             />
-            <p className="text-xs text-gray-500 mt-1">At least 8 characters recommended</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">At least 8 characters recommended</p>
           </div>
 
           {/* Confirm Password */}
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="confirmPassword" className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">
               Confirm Password
             </label>
             <input
@@ -255,7 +254,7 @@ export default function RegisterPage() {
               value={formData.confirmPassword}
               onChange={handleInputChange}
               placeholder="••••••••"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-4 py-3 border-b-2 border-b-neutral-200 dark:border-b-neutral-700 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-b-primary-500 focus:shadow-lg focus:shadow-primary-100/50 dark:focus:shadow-primary-900/20 transition-all duration-250 focus:outline-none"
               disabled={isLoading}
             />
           </div>
@@ -264,40 +263,37 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
-              isLoading
-                ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                : 'bg-green-600 text-white hover:bg-green-700'
-            }`}
+            className="w-full py-3 px-4 rounded-xl font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 hover:shadow-lg disabled:from-neutral-300 disabled:to-neutral-400 disabled:text-neutral-500 disabled:cursor-not-allowed transition-all duration-250 shadow-md hover:shadow-hover active:scale-95 flex items-center justify-center gap-2"
           >
+            {isLoading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>}
             {isLoading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
         {/* Divider */}
-        <div className="mt-6 relative">
+        <div className="mt-8 relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
+            <div className="w-full border-t border-neutral-200 dark:border-neutral-700"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">or</span>
+            <span className="px-3 bg-white dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400 font-medium">or</span>
           </div>
         </div>
 
         {/* Login Link */}
-        <div className="mt-6 text-center">
-          <p className="text-gray-600 text-sm">
+        <div className="mt-8 text-center">
+          <p className="text-neutral-700 dark:text-neutral-300 text-sm">
             Already have an account?{' '}
-            <Link href="/auth/login" className="text-green-600 hover:text-green-700 font-medium">
+            <Link href="/auth/login" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-semibold transition-colors">
               Login here
             </Link>
           </p>
         </div>
 
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <p className="text-center text-xs text-gray-500">
-            DineFlow © 2026 | Secure Restaurant Ordering System
+        <div className="mt-8 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+          <p className="text-center text-xs text-neutral-500 dark:text-neutral-400 font-medium">
+            RESTOPI © 2026 | QR-Based Restaurant Ordering Platform
           </p>
         </div>
       </div>

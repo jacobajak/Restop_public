@@ -17,13 +17,11 @@ import { PaymentMethodEnum } from '../../orders/entities/order.entity';
 /**
  * PaymentController
  * 
- * Spec: Section 7 — API Endpoints
- * 
- * Implements Paypack instant payout design:
+ * Implements Flutterwave payment design (Paypack removed):
  * 1. POST /orders - Create order
  * 2. POST /orders/{orderId}/pay - Start MoMo payment (cashin)
  * 3. PATCH /orders/{orderId}/mark-paid - Mark cash order as paid
- * 4. POST /webhooks/paypack - Paypack webhook callback
+ * 4. POST /webhooks/flutterwave - Flutterwave webhook callback
  */
 @Controller()
 export class PaymentController {
@@ -106,6 +104,9 @@ export class PaymentController {
    * 
    * Initiates Paypack cashin for MTN/AIRTEL orders
    * 
+   * Headers:
+   * - Idempotency-Key (optional): UUID or alphanumeric string for request deduplication
+   * 
    * Request:
    * {
    *   "customer_phone": "0788123456"
@@ -115,6 +116,7 @@ export class PaymentController {
   async startPayment(
     @Param('orderId') orderId: string,
     @Body() body: { customer_phone?: string },
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     const { customer_phone } = body;
 
@@ -123,7 +125,13 @@ export class PaymentController {
     }
 
     // Initiate Mobile Money payment
-    const result = await this.paymentService.startMobileMoneyPayment(orderId, customer_phone);
+    const result = await this.paymentService.startMobileMoneyPayment(
+      orderId,
+      customer_phone,
+      undefined,
+      undefined,
+      idempotencyKey,
+    );
 
     return {
       ok: true,
@@ -142,6 +150,9 @@ export class PaymentController {
    * Only tenant staff can call this endpoint.
    * Records commission when cash is confirmed.
    * 
+   * Headers:
+   * - Idempotency-Key (optional): UUID or alphanumeric string for request deduplication
+   * 
    * Request:
    * {
    *   "tenant_id": "tenant-uuid"
@@ -151,6 +162,7 @@ export class PaymentController {
   async markCashOrderPaid(
     @Param('orderId') orderId: string,
     @Body() body: { tenant_id: string },
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     const { tenant_id } = body;
 
@@ -159,7 +171,7 @@ export class PaymentController {
     }
 
     // Mark order as paid
-    const order = await this.paymentService.markCashOrderPaid(orderId);
+    const order = await this.paymentService.markCashOrderPaid(orderId, idempotencyKey);
 
     if (order.tenant_id !== tenant_id) {
       throw new BadRequestException('Unauthorized: Order does not belong to this tenant');
@@ -185,49 +197,8 @@ export class PaymentController {
   }
 
   /**
-   * Paypack webhook callback (legacy)
-   * 
-   * POST /webhooks/paypack
-   * 
-   * Headers:
-   * - x-paypack-signature: HMAC-SHA256(raw_body, webhook_secret) encoded as base64
-   */
-  @Post('/webhooks/paypack')
-  async handlePaypackWebhook(
-    @Headers('x-paypack-signature') signatureHeader: string,
-    @Body() parsedBody: any,
-  ) {
-    if (!signatureHeader) {
-      throw new BadRequestException('x-paypack-signature header is missing');
-    }
-
-    if (!parsedBody) {
-      throw new BadRequestException('Request body is required');
-    }
-
-    try {
-      // Process webhook event
-      const rawBody = JSON.stringify(parsedBody);
-      const result = await this.webhookService.handleWebhookCallback(
-        rawBody,
-        { 'x-paypack-signature': signatureHeader },
-        parsedBody,
-      );
-
-      return {
-        ok: true,
-        ...result,
-      };
-    } catch (error: any) {
-      this.logger.error(`Paypack webhook processing error: ${error.message}`, error.stack);
-
-      // Always return 200 to prevent retries, but log the error
-      return {
-        ok: false,
-        error: error.message,
-      };
-    }
-  }
+   * REMOVED: Paypack webhook endpoint (using Flutterwave exclusively)
+   * @deprecated Use Flutterwave webhooks instead
 
   /**
    * Flutterwave webhook callback

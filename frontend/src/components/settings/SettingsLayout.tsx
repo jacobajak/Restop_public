@@ -27,6 +27,13 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     requiredRoles: ['TENANT_OWNER', 'TENANT_MANAGER'],
   },
   {
+    id: 'country',
+    label: 'Country & Currency',
+    description: 'Select operating country and currency',
+    icon: '🌍',
+    requiredRoles: ['TENANT_OWNER'],
+  },
+  {
     id: 'hours',
     label: 'Operating Hours',
     description: 'Manage when you accept orders',

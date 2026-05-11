@@ -17,7 +17,6 @@ export enum TransactionKindEnum {
 
 export enum PaymentProviderEnum {
   FLUTTERWAVE = 'FLUTTERWAVE',
-  PAYPACK = 'PAYPACK',
 }
 
 export enum PaymentMethodEnum {
@@ -29,15 +28,23 @@ export enum PaymentMethodEnum {
 export type TransactionKind = keyof typeof TransactionKindEnum;
 
 /**
- * PaymentTransaction - Tracks Paypack cashin and cashout transactions
+ * PaymentTransaction - Tracks Flutterwave cashin and cashout transactions
  * 
- * Records each transaction attempt from Paypack.
- * - CASHIN: Collection from customer
- * - CASHOUT: Payout to tenant
+ * Records each transaction attempt from Flutterwave.
+ * - CASHIN: Collection from customer (mobile money)
+ * - CASHOUT: Payout to tenant (bank transfer/mobile money)
+ * 
+ * Multi-Currency Support:
+ * - `currency`: The currency code for this transaction (e.g., 'KES', 'RWF')
+ * - `amount`: Transaction amount in the specified currency
+ * - `exchange_rate_used`: Exchange rate used if currency differs from base
+ * - `amount_in_usd`: Optional USD equivalent for cross-currency settlement
  */
 @Entity('payment_transactions')
 @Index(['order_id'])
 @Index(['provider_ref'], { unique: true })
+@Index(['currency'])
+@Index(['tenant_id', 'currency'])
 export class PaymentTransaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -48,17 +55,43 @@ export class PaymentTransaction {
   @Column('uuid')
   tenant_id: string;
 
-  @Column({ default: 'PAYPACK', comment: 'Payment provider identifier' })
+  @Column({ default: 'FLUTTERWAVE', comment: 'Payment provider identifier' })
   provider: string;
 
   @Column({ type: 'enum', enum: TransactionKindEnum })
   kind: TransactionKind;
 
-  @Column({ comment: 'Provider transaction reference (Paypack ref)' })
+  @Column({ comment: 'Provider transaction reference (Flutterwave ref)' })
   provider_ref: string;
 
-  @Column({ type: 'int', comment: 'Transaction amount in base currency units' })
+  @Column({ type: 'decimal', precision: 15, scale: 2, comment: 'Transaction amount in the specified currency' })
   amount: number;
+
+  @Column({
+    type: 'varchar',
+    length: 3,
+    default: 'RWF',
+    comment: 'Currency code (ISO 4217) for this transaction (e.g., KES, RWF, TZS)',
+  })
+  currency: string;
+
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 6,
+    nullable: true,
+    comment: 'Exchange rate used if currency differs from base currency (conversion rate)',
+  })
+  exchange_rate_used: number;
+
+  @Column({
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+    comment: 'Amount converted to USD for cross-currency settlement and reconciliation',
+  })
+  amount_in_usd: number;
 
   @Column({ comment: 'Transaction status from provider' })
   status: string;
@@ -71,7 +104,7 @@ export class PaymentTransaction {
   })
   flutterwave_status: string;
 
-  @Column({ type: 'jsonb', nullable: true, comment: 'Raw Paypack response payload' })
+  @Column({ type: 'jsonb', nullable: true, comment: 'Raw Flutterwave response payload' })
   raw_payload: Record<string, any>;
 
   @CreateDateColumn()

@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payout, PayoutStatusEnum } from '../entities/payout.entity';
-import { PaypackIntegrationService } from './paypack-integration.service';
 import { FlutterwaveIntegrationService } from './flutterwave-integration.service';
 
 /**
@@ -18,7 +17,6 @@ export class PayoutRetryService {
   constructor(
     @InjectRepository(Payout)
     private readonly payoutRepository: Repository<Payout>,
-    private readonly paypackService: PaypackIntegrationService,
     private readonly flutterwaveService: FlutterwaveIntegrationService,
   ) {}
 
@@ -86,32 +84,20 @@ export class PayoutRetryService {
   }
 
   /**
-   * Attempt a single payout
+   * Attempt a single payout using Flutterwave
    */
   private async attemptPayout(payout: Payout): Promise<{ success: boolean; error?: string }> {
     try {
-      // Use Paypack as primary provider for this region
-      // Assuming integration has a method compatible with the signature
-      try {
-        const result = await (this.paypackService as any).requestPayout?.(payout.id, payout.amount);
-        if (result && result.success) {
-          return { success: true };
-        }
-      } catch (error) {
-        this.logger.debug(`Paypack payout failed: ${error}`);
+      const result = await (this.flutterwaveService as any).initiatePayout({
+        reference: payout.id,
+        amount: payout.amount,
+      });
+      
+      if (result && (result.status === 'success' || result.status === 'completed')) {
+        return { success: true };
       }
-
-      // Fallback to Flutterwave
-      try {
-        const result = await (this.flutterwaveService as any).requestPayout?.(payout.id, payout.amount);
-        if (result && result.success) {
-          return { success: true };
-        }
-      } catch (error) {
-        this.logger.debug(`Flutterwave payout failed: ${error}`);
-      }
-
-      return { success: false, error: 'All payment providers failed' };
+      
+      return { success: false, error: 'Payout not completed' };
     } catch (error: any) {
       return { success: false, error: error.message };
     }

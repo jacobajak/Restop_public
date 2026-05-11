@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from '../../orders/entities/order.entity';
 
-interface GuestCustomerProfile {
+export interface GuestCustomerProfile {
   customer_phone: string;
   total_orders: number;
   total_spent: number;
@@ -16,7 +16,7 @@ interface GuestCustomerProfile {
   customer_lifetime_value: number;
 }
 
-interface CustomerStatistics {
+export interface CustomerStatistics {
   total_unique_customers: number;
   new_customers_today: number;
   returning_customers: number;

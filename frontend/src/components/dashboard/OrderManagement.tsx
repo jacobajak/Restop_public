@@ -42,8 +42,12 @@ export const OrderManagement: React.FC<OrderManagementProps> = ({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-gray-600 text-lg">Loading orders...</p>
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="mb-4">
+          <div className="w-8 h-8 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+        </div>
+        <p className="text-gray-600 text-lg font-medium">Loading orders...</p>
+        <p className="text-gray-400 text-sm mt-2">This may take a moment if you have many orders</p>
       </div>
     );
   }

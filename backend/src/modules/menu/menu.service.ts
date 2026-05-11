@@ -59,6 +59,7 @@ export class MenuService {
       name: dto.name,
       description: dto.description || '',
       price: dto.price,
+      currency: dto.currency, // Include currency from DTO
       image_url: dto.image_url,
       is_available: dto.is_available !== false, // Default to true
     });

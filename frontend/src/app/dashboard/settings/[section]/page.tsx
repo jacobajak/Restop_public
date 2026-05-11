@@ -15,9 +15,11 @@ import { TablesSettings } from '@/components/settings/TablesSettings';
 import { PaymentSettings } from '@/components/settings/PaymentSettings';
 import { StaffAccessSettings } from '@/components/settings/StaffAccessSettings';
 import { StaffManagementSettings } from '@/components/settings/StaffManagementSettings';
+import { CountryCurrencySettings } from '@/components/settings/CountryCurrencySettings';
 
 const SECTION_COMPONENTS: Record<string, React.ComponentType> = {
   profile: RestaurantProfileSettings,
+  country: CountryCurrencySettings,
   hours: OperatingHoursSettings,
   orders: OrderSettings,
   tables: TablesSettings,

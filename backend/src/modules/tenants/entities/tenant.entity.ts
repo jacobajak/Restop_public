@@ -26,6 +26,9 @@ export class Tenant {
   @Column({ nullable: true })
   phone: string;
 
+  @Column({ nullable: true })
+  location: string;
+
   @Column()
   email: string;
 
@@ -34,6 +37,12 @@ export class Tenant {
 
   @Column({ default: 'RWF' })
   currency: string;
+
+  @Column({ nullable: true, comment: 'African country code (e.g., RW, KE, TZ, UG, GH)' })
+  country_code: string;
+
+  @Column({ nullable: true, comment: 'Full country name (e.g., Rwanda, Kenya, Tanzania)' })
+  country_name: string;
 
   @Column({ nullable: true })
   qr_code_url: string;

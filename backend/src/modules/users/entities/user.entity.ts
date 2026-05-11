@@ -15,6 +15,7 @@ export enum UserRole {
   TENANT_MANAGER = 'TENANT_MANAGER',
   KITCHEN_STAFF = 'KITCHEN_STAFF',
   CASHIER = 'CASHIER',
+  CUSTOMER = 'CUSTOMER',
 }
 
 // For backwards compatibility, TENANT_STAFF is deprecated

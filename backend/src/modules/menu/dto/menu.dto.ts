@@ -21,6 +21,10 @@ export class CreateMenuItemDto {
 
   @IsString()
   @IsOptional()
+  currency?: string; // Optional currency code (ISO 4217), inherits from tenant if not provided
+
+  @IsString()
+  @IsOptional()
   image_url?: string;
 
   @IsBoolean()
@@ -40,6 +44,10 @@ export class UpdateMenuItemDto {
   @IsNumber()
   @IsOptional()
   price: number;
+
+  @IsString()
+  @IsOptional()
+  currency?: string; // Optional currency code (ISO 4217)
 
   @IsString()
   @IsOptional()

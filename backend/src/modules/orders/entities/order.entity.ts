@@ -7,6 +7,7 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { Tenant } from '../../tenants/entities/tenant.entity';
 import { Table } from '../../tables/entities/table.entity';
@@ -43,6 +44,9 @@ export enum PaymentStatusEnum {
 export type PaymentStatus = keyof typeof PaymentStatusEnum;
 
 @Entity('orders')
+@Index('IDX_orders_tenant_status_created', ['tenant_id', 'status', 'created_at'])
+@Index('IDX_orders_tenant_created', ['tenant_id', 'created_at'])
+@Index('IDX_orders_tenant', ['tenant_id'])
 export class Order {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -72,6 +76,14 @@ export class Order {
   @Column({ type: 'int', comment: 'Total amount = subtotal + platform_fee' })
   total_amount: number;
 
+  @Column({
+    type: 'varchar',
+    length: 3,
+    default: 'RWF',
+    comment: 'Currency code (ISO 4217) for order amounts (e.g., KES, RWF, TZS)',
+  })
+  currency: string;
+
   @Column({ type: 'enum', enum: PaymentMethodEnum, default: PaymentMethodEnum.CASH })
   payment_method: PaymentMethod;
 
@@ -86,9 +98,6 @@ export class Order {
 
   @Column({ unique: true, nullable: true, comment: 'Unique transaction reference for idempotency' })
   tx_ref: string;
-
-  @Column({ nullable: true, comment: 'Paypack cashin reference ID' })
-  paypack_cashin_ref: string;
 
   @Column({ nullable: true, comment: 'Flutterwave transaction ID' })
   flutterwave_id: string;

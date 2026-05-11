@@ -9,47 +9,108 @@ import { Card } from '@/components/common';
 import apiClient from '@/services/apiClient';
 
 export default function QRCodePage() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, updateUser } = useAuth();
   const { hasPageAccess } = useRoleAccess();
   const [qrUrl, setQrUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
+    // Step 1: Wait for auth to complete
+    if (authLoading) {
+      return; // Still loading auth, keep isLoading as true
+    }
+
+    // Step 2: If user is not loaded, try to fetch it first before checking access
+    if (!user) {
+      console.log('User not in context, fetching from backend...');
+      const fetchUser = async () => {
+        try {
+          const response = await apiClient.get('/tenants/me/profile');
+          if (response.data.data) {
+            const tenantData = response.data.data;
+            // Reconstruct user object with tenant_id and role
+            const userData = {
+              ...tenantData,
+              tenant_id: tenantData.id,
+              role: 'TENANT_OWNER', // Default role for authenticated users accessing tenant profile
+            } as any;
+            updateUser(userData);
+            console.log('Fetched and updated user context:', userData);
+          }
+        } catch (err) {
+          console.error('Failed to fetch user from backend:', err);
+          setIsLoading(false);
+          setError('Not authenticated. Please log in.');
+        }
+      };
+      fetchUser();
+      return; // Don't proceed until user is fetched
+    }
+
+    // Step 3: Check access and exit if not authorized
     if (!hasPageAccess('qrcode')) {
       setIsLoading(false);
       return;
     }
 
+    // Step 4: Check if we have a user with tenant_id
+    if (!user?.id) {
+      setIsLoading(false);
+      setError('Not authenticated. Please log in.');
+      return;
+    }
+
     const loadQRCode = async () => {
-      // Wait for auth to finish loading
-      if (authLoading) {
-        console.log('Auth still loading...');
-        return;
-      }
-
-      // If auth finished loading but no user, redirect to login
-      if (!user || !user.tenant_id) {
-        console.error('No user found, redirecting to login');
-        setError('Not authenticated. Please log in.');
-        setIsLoading(false);
-        return;
-      }
-
       try {
-        let slug = user.slug;
+        // Get user - either from context or fetch from backend
+        let currentUser = user;
+        
+        // If tenant_id is missing, fetch full user profile from backend
+        if (!currentUser?.tenant_id) {
+          console.log('tenant_id missing from user object, fetching from backend...');
+          try {
+            const response = await apiClient.get('/tenants/me/profile');
+            if (response.data.data) {
+              const tenantData = response.data.data;
+              // For TENANT_OWNER, merge tenant data while preserving user fields
+              currentUser = {
+                ...currentUser,  // Keep existing user fields (id, email, role)
+                ...tenantData,   // Add tenant fields (name, slug, etc)
+                tenant_id: tenantData.id,  // Map tenant id to tenant_id
+                role: currentUser?.role || 'TENANT_OWNER',  // Ensure role is preserved
+              };
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('user', JSON.stringify(currentUser));
+              }
+              // Update React context so hasPageAccess check works
+              updateUser(currentUser as any);
+              console.log('Fetched full user from backend:', currentUser);
+            }
+          } catch (err) {
+            console.error('Failed to fetch user profile from backend:', err);
+          }
+        }
+
+        // If still no tenant_id, show error
+        if (!currentUser?.tenant_id) {
+          setError('Not authenticated. Please log in.');
+          setIsLoading(false);
+          return;
+        }
+
+        let slug = currentUser.slug;
 
         // If slug is missing, try to fetch it from backend
         if (!slug) {
           console.log('Slug missing from user object, fetching from backend...');
           try {
-            const response = await apiClient.get(`/tenants/${user.tenant_id}/info`);
+            const response = await apiClient.get(`/tenants/${currentUser.tenant_id}/info`);
             slug = response.data.data?.slug;
             console.log('Fetched slug from backend:', slug);
             
-            // Update user object in localStorage with the slug
             if (slug) {
-              const updatedUser = { ...user, slug };
+              const updatedUser = { ...currentUser, slug };
               localStorage.setItem('user', JSON.stringify(updatedUser));
             }
           } catch (err) {
@@ -57,18 +118,16 @@ export default function QRCodePage() {
           }
         }
 
-        // Log user data for debugging
-        console.log('User data loaded:', { name: user.name, slug });
+        console.log('User data loaded:', { name: currentUser.name, slug });
 
         if (!slug) {
-          console.error('Could not get slug for user:', user);
+          console.error('Could not get slug for user:', currentUser);
           setError('Unable to retrieve restaurant slug. Please refresh the page or log out and log back in.');
           setQrUrl('');
           setIsLoading(false);
           return;
         }
         
-        // Generate menu URL based on current location
         const protocol = window.location.protocol;
         const hostname = window.location.hostname;
         const port = window.location.port ? `:${window.location.port}` : '';
@@ -88,7 +147,8 @@ export default function QRCodePage() {
     };
 
     loadQRCode();
-  }, [authLoading, user]);
+    // Only depend on authLoading and user's tenant_id - primitive values only
+  }, [authLoading, user?.tenant_id]);
 
   // Check access - after hooks
   if (!hasPageAccess('qrcode')) {

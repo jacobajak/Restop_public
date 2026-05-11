@@ -322,22 +322,30 @@ export class OrdersService {
     offset: number = 0,
   ): Promise<{ data: Order[]; total: number }> {
     try {
-      // Build query with tenant filter
+      // Build counter query without joins to get accurate count
+      const countQuery = this.orderRepository.createQueryBuilder('order')
+        .where('order.tenant_id = :tenantId', { tenantId });
+
+      // Build data query with joins for full order data
       const query = this.orderRepository.createQueryBuilder('order')
         .where('order.tenant_id = :tenantId', { tenantId })
         .leftJoinAndSelect('order.items', 'items'); // Include items
 
-      // Add status filter if provided
+      // Add status filter to both queries
       if (status) {
+        countQuery.andWhere('order.status = :status', { status });
         query.andWhere('order.status = :status', { status });
       }
 
-      // Apply pagination and ordering, then get both data and total
-      const [data, total] = await query
+      // Get total count from separate query (no joins to avoid duplicates)
+      const total = await countQuery.getCount();
+
+      // Get paginated data with items
+      const data = await query
         .orderBy('order.created_at', 'DESC') // Newest first
         .skip(offset)
         .take(limit)
-        .getManyAndCount();
+        .getMany();
 
       return { data, total };
     } catch (error) {
@@ -512,19 +520,18 @@ export class OrdersService {
    * 
    * Handles payment processing based on payment method:
    * - CASH: No external action, payment confirmed manually by staff
-   * - MTN/AIRTEL: Call Paypack to initiate mobile money payment
+   * - MTN/AIRTEL: Collected via Flutterwave
    * 
    * For Mobile Money:
    * 1. Validates order exists and is in PENDING_PAYMENT status
-   * 2. Normalizes phone number for Paypack
-   * 3. Initiates USSD-based payment request via Paypack API
-   * 4. Stores Paypack reference in order for webhook matching
+   * 2. Initiates Flutterwave-based payment request
+   * 3. Stores Flutterwave reference for webhook matching
    * 5. Returns payment reference to frontend
    * 
    * Customer Flow:
-   * - Paypack sends USSD prompt to customer's phone
+   * - Flutterwave sends confirmation to customer's phone/account
    * - Customer enters PIN to complete payment
-   * - Paypack sends webhook callback when complete
+   * - Flutterwave sends webhook callback when complete
    * - Order status updates automatically via webhook
    * 
    * For Cash:
@@ -534,7 +541,7 @@ export class OrdersService {
    * @async
    * @param {string} id - Order ID
    * @returns {Promise<object>} Payment initiation result
-   * @returns {string} paymentRef - Paypack reference (for Mobile Money only)
+   * @returns {string} paymentRef - Flutterwave reference
    * @returns {string} payment_method - The payment method used
    * @returns {string} message - User-friendly message
    * @throws {NotFoundException} If order not found
@@ -544,7 +551,7 @@ export class OrdersService {
    * // Mobile Money payment
    * const result = await ordersService.initiatePayment('order-123');
    * // {
-   * //   paymentRef: 'PAYPACK-REF-12345',
+   * //   paymentRef: 'FLW-REF-12345',
    * //   payment_method: 'MTN',
    * //   message: 'Check your phone for payment prompt'
    * // }

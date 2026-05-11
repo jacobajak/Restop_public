@@ -9,8 +9,11 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
+import { RolesGuard } from '../../../common/guards/roles.guard';
+import { Roles } from '../../../common/decorators/roles.decorator';
 import { GetUser } from '../../../common/decorators/get-user.decorator';
 import { JwtPayload } from '../../../common/strategies/jwt.strategy';
+import { UserRole } from '../../users/entities/user.entity';
 import { SupportIssueService } from '../../admin/services/support-issue.service';
 import { SupportIssueTypeEnum, SupportIssueSeverityEnum } from '../../admin/entities/support-issue.entity';
 
@@ -27,7 +30,8 @@ import { SupportIssueTypeEnum, SupportIssueSeverityEnum } from '../../admin/enti
  * GET /support/issues/:id - Get ticket details
  */
 @Controller('support/issues')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.TENANT_OWNER, UserRole.TENANT_MANAGER, UserRole.KITCHEN_STAFF, UserRole.CASHIER)
 export class SupportIssuesController {
   constructor(
     private readonly supportIssueService: SupportIssueService,
